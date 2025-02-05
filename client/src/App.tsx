@@ -1,9 +1,9 @@
-import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import LandingPage from './LandingPage';  // Import the LandingPage component
-import Content from './Content';
-import Login from './Login';
-import SignUp from './SignUp';
+import LandingPage from './Pages/LandingPage';  // Import the LandingPage component
+import Content from './Pages/Content';
+import Login from './Pages/Login';
+import SignUp from './Pages/SignUp';
+
 const App = () => {
   return (
     <Router>

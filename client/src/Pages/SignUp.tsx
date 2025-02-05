@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AuthLayout } from './AuthLayout';
+import { AuthLayout } from '../Components/AuthLayout';
 
 export function SignUp() {
   const [formData, setFormData] = useState({
