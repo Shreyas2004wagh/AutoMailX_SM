@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Star, Clock, Send, FileEdit, Trash2, Search, ChevronRight, Sparkles, Shield, Zap, Settings, CheckCircle2, Github, Twitter, Linkedin } from 'lucide-react';
+import { Mail, Star, Clock, Send, FileEdit, Search, ChevronRight, Sparkles, Shield, Zap, Settings, CheckCircle2, Github, Twitter, Linkedin } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 function LandingPage() {
@@ -18,7 +18,6 @@ function LandingPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-gray-900 to-black text-white">
-      {/* Animated background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="animate-pulse-slow absolute -inset-[10px] opacity-50 bg-gradient-to-br from-purple-600/20 via-transparent to-transparent blur-3xl" />
         <div className="animate-pulse-slower absolute -inset-[10px] opacity-30 bg-gradient-to-tr from-purple-800/20 via-transparent to-transparent blur-3xl" />
@@ -26,7 +25,6 @@ function LandingPage() {
 
       {/* Main content */}
       <div className="relative z-10">
-        {/* Navigation */}
         <nav className="border-b border-purple-800/30 backdrop-blur-sm sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
@@ -37,8 +35,8 @@ function LandingPage() {
                 </span>
               </div>
               <div className="hidden md:flex items-center space-x-6">
-                <a href="#features" className="text-gray-300 hover:text-white transition-colors">SignUp</a>
-                <a href="#features" className="text-gray-300 hover:text-white transition-colors">LogIn</a>
+                <a onClick={() => navigate('/SignUp')} href="#features" className="text-gray-300 hover:text-white transition-colors">SignUp</a>
+                <a onClick={() => navigate('/Login')} href="#features" className="text-gray-300 hover:text-white transition-colors">LogIn</a>
                 <a href="#features" className="text-gray-300 hover:text-white transition-colors">Features</a>
                 <a href="#pricing" className="text-gray-300 hover:text-white transition-colors">Plans</a>
                 <a href="#testimonials" className="text-gray-300 hover:text-white transition-colors">Testimonials</a>
