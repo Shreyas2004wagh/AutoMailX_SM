@@ -22,7 +22,7 @@ mongoose
   .then(() => console.log("✅ Connected to MongoDB"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
-app.use(cors({ origin: "http://localhost:3000", credentials: true }));
+  app.use(cors({ origin: "*", credentials: true }));
 app.use(express.json());
 
 // ✅ Session setup
