@@ -6,12 +6,15 @@ require("dotenv").config();
 
 const router = express.Router();
 
-// Signup Route
 router.post("/signup", async (req, res) => {
   try {
-    const { username, email, password } = req.body;
-    if (!username || !email || !password) {
+    const { username, email, password, confirmPassword } = req.body;
+    if (!username || !email || !password || !confirmPassword) {
       return res.status(400).json({ message: "All fields are required" });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({ message: "Passwords do not match" });
     }
 
     // Check if user exists
