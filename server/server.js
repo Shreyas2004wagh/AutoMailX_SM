@@ -22,8 +22,25 @@ mongoose
   .then(() => console.log("✅ Connected to MongoDB"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
-  app.use(cors({ origin: "*", credentials: true }));
+// ✅ Dummy User Database (replace with a real database in production)
+const users = [
+  { username: "testuser", password: "password123" }, // Example user
+];
+
+app.use(
+  cors({
+    origin: ["http://localhost:3000", "http://localhost:5173"],
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
+  })
+);
+
 app.use(express.json());
+app.use((req, res, next) => {
+  console.log("Session data:", req.session);
+  next();
+});
+
 
 // ✅ Session setup
 app.use(
@@ -52,6 +69,24 @@ app.get("/", (req, res) => {
   }
 });
 
+// ✅ Login Route
+app.post("/login", (req, res) => {
+  const { username, password } = req.body;
+
+  // Validate credentials
+  const user = users.find(
+    (u) => u.username === username && u.password === password
+  );
+
+  if (!user) {
+    return res.status(401).json({ error: "Invalid credentials" });
+  }
+
+  // Save user in session
+  req.session.user = { username: user.username };
+  res.json({ message: "Login successful", user: req.session.user });
+});
+
 // ✅ Google OAuth Login
 app.get(
   "/auth/google",
@@ -67,21 +102,35 @@ app.get(
   (req, res) => {
     console.log("✅ User Authenticated:", req.user);
 
-    // Redirect to frontend with token
-    res.redirect(`http://localhost:3000/dashboard?token=${req.user.accessToken}`);
+    // Store user details and access token in the session
+    req.session.user = {
+      id: req.user.id,
+      accessToken: req.user.accessToken,
+      refreshToken: req.user.refreshToken, // Optional for token refreshing
+      email: req.user.email,
+    };
+
+    // Redirect to frontend
+    res.redirect("http://localhost:5000/dashboard");
   }
 );
 
-// ✅ Fetch Emails Route
-app.get("/emails", async (req, res) => {
-  console.log("User session data:", req.user);
 
-  if (!req.user || !req.user.accessToken) {
+
+// ✅ Fetch Emails Route
+let fetchedEmails = []; // Global variable to store fetched emails
+
+// ✅ Route to Fetch and Store Emails
+app.get("/emails", async (req, res) => {
+  console.log("Session data in /emails route:", req.session); // Debugging
+
+  if (!req.session.user) {
     return res.status(401).json({ error: "User not authenticated" });
   }
 
+  const accessToken = req.session.user.accessToken;
   const auth = new google.auth.OAuth2();
-  auth.setCredentials({ access_token: req.user.accessToken });
+  auth.setCredentials({ access_token: accessToken });
 
   const gmail = google.gmail({ version: "v1", auth });
 
@@ -94,7 +143,8 @@ app.get("/emails", async (req, res) => {
     const messages = response.data.messages;
     if (!messages) return res.status(200).json({ emails: [] });
 
-    const emails = await Promise.all(
+    // Fetch and store emails
+    fetchedEmails = await Promise.all(
       messages.map(async (message) => {
         const email = await gmail.users.messages.get({
           userId: "me",
@@ -104,27 +154,44 @@ app.get("/emails", async (req, res) => {
         return {
           id: email.data.id,
           snippet: email.data.snippet,
-          from: email.data.payload.headers.find(header => header.name === "From")?.value || "Unknown",
-          subject: email.data.payload.headers.find(header => header.name === "Subject")?.value || "No Subject",
+          from:
+            email.data.payload.headers.find(
+              (header) => header.name === "From"
+            )?.value || "Unknown",
+          subject:
+            email.data.payload.headers.find(
+              (header) => header.name === "Subject"
+            )?.value || "No Subject",
         };
       })
     );
 
-    res.json({ emails });
+    res.json({ emails: fetchedEmails }); // Send response
   } catch (error) {
+    console.error("Error fetching emails:", error);
     res.status(500).json({ error: error.message });
   }
 });
 
+// ✅ New Route to Serve Stored Emails
+app.get("/get-emails", (req, res) => {
+  if (!fetchedEmails.length) {
+    return res.status(404).json({ error: "No emails fetched yet" });
+  }
+
+  res.json({ emails: fetchedEmails });
+});
+
+
 // ✅ Debug Route: Check Session Data
 app.get("/debug-session", (req, res) => {
-  res.json({ user: req.user || null });
+  res.json({ user: req.session.user || null });
 });
 
 // ✅ Logout Route
 app.get("/logout", (req, res) => {
-  req.logout(() => {
-    res.redirect("/");
+  req.session.destroy(() => {
+    res.json({ message: "Logged out successfully" });
   });
 });
 
