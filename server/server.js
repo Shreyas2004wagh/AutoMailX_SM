@@ -6,6 +6,8 @@ const session = require("express-session");
 const passport = require("passport");
 const { google } = require("googleapis");
 const Router = require("./routes.js"); // Your existing routes
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
 require("./auth"); // Import Google OAuth strategy
 
 dotenv.config();
@@ -121,59 +123,82 @@ app.get(
 let fetchedEmails = []; // Global variable to store fetched emails
 
 // ✅ Route to Fetch and Store Emails
+// app.get("/emails", async (req, res) => {
+//   console.log("Session data in /emails route:", req.session); // Debugging
+
+//   if (!req.session.user) {
+//     return res.status(401).json({ error: "User not authenticated" });
+//   }
+
+//   const accessToken = req.session.user.accessToken;
+//   const auth = new google.auth.OAuth2();
+//   auth.setCredentials({ access_token: accessToken });
+
+//   const gmail = google.gmail({ version: "v1", auth });
+
+//   try {
+//     const response = await gmail.users.messages.list({
+//       userId: "me",
+//       maxResults: 10,
+//     });
+
+//     const messages = response.data.messages;
+//     if (!messages) return res.status(200).json({ emails: [] });
+
+//     // Fetch and store emails
+//     fetchedEmails = await Promise.all(
+//       messages.map(async (message) => {
+//         const email = await gmail.users.messages.get({
+//           userId: "me",
+//           id: message.id,
+//         });
+
+//         return {
+//           id: email.data.id,
+//           snippet: email.data.snippet,
+//           from:
+//             email.data.payload.headers.find(
+//               (header) => header.name === "From"
+//             )?.value || "Unknown",
+//           subject:
+//             email.data.payload.headers.find(
+//               (header) => header.name === "Subject"
+//             )?.value || "No Subject",
+//         };
+//       })
+//     );
+
+//     res.json({ emails: fetchedEmails }); // Send response
+//   } catch (error) {
+//     console.error("Error fetching emails:", error);
+//     res.status(500).json({ error: error.message });
+//   }
+// });
+
 app.get("/emails", async (req, res) => {
-  console.log("Session data in /emails route:", req.session); // Debugging
+  if (!req.session.user) return res.status(401).json({ error: "User not authenticated" });
 
-  if (!req.session.user) {
-    return res.status(401).json({ error: "User not authenticated" });
-  }
-
-  const accessToken = req.session.user.accessToken;
   const auth = new google.auth.OAuth2();
-  auth.setCredentials({ access_token: accessToken });
-
+  auth.setCredentials({ access_token: req.session.user.accessToken });
   const gmail = google.gmail({ version: "v1", auth });
 
   try {
-    const response = await gmail.users.messages.list({
-      userId: "me",
-      maxResults: 10,
-    });
+    const response = await gmail.users.messages.list({ userId: "me", maxResults: 10 });
+    const messages = response.data.messages || [];
 
-    const messages = response.data.messages;
-    if (!messages) return res.status(200).json({ emails: [] });
+    // Fetch full content for each email and store in fetchedEmails
+    fetchedEmails = await Promise.all(messages.map((msg) => getEmailContent(gmail, msg.id)));
 
-    // Fetch and store emails
-    fetchedEmails = await Promise.all(
-      messages.map(async (message) => {
-        const email = await gmail.users.messages.get({
-          userId: "me",
-          id: message.id,
-        });
-
-        return {
-          id: email.data.id,
-          snippet: email.data.snippet,
-          from:
-            email.data.payload.headers.find(
-              (header) => header.name === "From"
-            )?.value || "Unknown",
-          subject:
-            email.data.payload.headers.find(
-              (header) => header.name === "Subject"
-            )?.value || "No Subject",
-        };
-      })
-    );
-
-    res.json({ emails: fetchedEmails }); // Send response
+    res.json({ emails: fetchedEmails }); // Send response to frontend
   } catch (error) {
-    console.error("Error fetching emails:", error);
+    console.error("❌ Error fetching emails:", error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// ✅ New Route to Serve Stored Emails
+
+
+// ✅ Serve Stored Emails with Full Content
 app.get("/get-emails", (req, res) => {
   if (!fetchedEmails.length) {
     return res.status(404).json({ error: "No emails fetched yet" });
@@ -181,6 +206,39 @@ app.get("/get-emails", (req, res) => {
 
   res.json({ emails: fetchedEmails });
 });
+// ✅ Fetch Full Email Content Function
+async function getEmailContent(gmail, emailId) {
+  try {
+    const email = await gmail.users.messages.get({
+      userId: "me",
+      id: emailId,
+    });
+
+    const headers = email.data.payload.headers;
+    const from = headers.find((h) => h.name === "From")?.value || "Unknown";
+    const subject = headers.find((h) => h.name === "Subject")?.value || "No Subject";
+
+    let emailContent = "No Content Available";
+
+    // Check if the email has parts (multipart emails)
+    if (email.data.payload.parts) {
+      for (let part of email.data.payload.parts) {
+        if (part.mimeType === "text/plain") {
+          emailContent = Buffer.from(part.body.data, "base64").toString("utf-8");
+          break;
+        }
+      }
+    } else {
+      // If it's a single-part email
+      emailContent = Buffer.from(email.data.payload.body.data || "", "base64").toString("utf-8");
+    }
+
+    return { id: emailId, from, subject, content: emailContent };
+  } catch (error) {
+    console.error("❌ Error fetching email content:", error);
+    return { id: emailId, from: "Unknown", subject: "Error", content: "Failed to fetch email content." };
+  }
+}
 
 
 // ✅ Debug Route: Check Session Data
