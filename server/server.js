@@ -11,6 +11,8 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY; // Ensure you have this in .e
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 const axios = require("axios");
 const Email = require("./models/Email.js");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+
 
 dotenv.config();
 
@@ -116,6 +118,36 @@ const classifyEmailWithGemini = async (emailContent) => {
   }
 };
 
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+async function getSummary(text) {
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const prompt = `Please provide a concise summary of the following text:\n\n${text}`;
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    console.log("Gemini Response:", response); // Debugging
+    return response.text();
+  } catch (error) {
+    console.error("Error generating summary:", error);
+    return "Error generating summary";
+  }
+}
+
+
+app.post("/summarize", async (req, res) => {
+  try {
+    const { emailContent } = req.body;
+    if (!emailContent) {
+      return res.status(400).json({ message: "Email content is required" });
+    }
+    const summary = await getSummary(emailContent);
+    res.json({ summary });
+  } catch (error) {
+    res.status(500).json({ message: "Error summarizing email"});
+}
+});
+
 // --- Modified /get-emails Route ---
 
 app.get("/get-emails", async (req, res) => {
@@ -150,7 +182,7 @@ app.get("/get-emails", async (req, res) => {
   }
 });
 
-//IMPORTANT -- This should go before *any* route that might need to read the emails from Gmail
+//IMPORTANT -- This should go before any route that might need to read the emails from Gmail
 //Fetch All emails
 app.get("/emails", async (req, res) => {
   if (!req.session.user)
