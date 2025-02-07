@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { LogOut, Inbox, AlertTriangle, Menu, X } from "lucide-react";
+import Loader from "./Skeleton";
 
 interface Email {
   id: string;
-  from : string;
+  from: string;
   sender: string;
   priority: string;
   sentiment: string;
   subject: string;
-  summary: string;
+  summary?: string; // ✅ AI-generated summary (optional)
   content: string;
 }
 
@@ -18,6 +19,7 @@ function Content() {
   const [activeFilter, setActiveFilter] = useState("all");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isEmailListOpen, setIsEmailListOpen] = useState(true);
+  const [loadingSummary, setLoadingSummary] = useState(false); // ✅ Track loading state for the selected email
 
   useEffect(() => {
     fetch("http://localhost:5000/get-emails", {
@@ -29,7 +31,33 @@ function Content() {
       .then((data) => Array.isArray(data.emails) ? setEmails(data.emails) : console.error("Invalid data:", data))
       .catch((err) => console.error("Error fetching stored emails:", err));
   }, []);
-  
+
+  // ✅ Generate summary for the selected email only
+  const handleGenerateSummary = async () => {
+    if (!selectedEmail) return;
+
+    setLoadingSummary(true);
+
+    try {
+      const res = await fetch("http://localhost:5000/summarize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emailContent: selectedEmail.content }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        // ✅ Update only the selected email's summary
+        setSelectedEmail((prev) => (prev ? { ...prev, summary: data.summary } : prev));
+      } else {
+        console.error("Failed to generate summary:", data.message);
+      }
+    } catch (error) {
+      console.error("❌ Error generating summary:", error);
+    }
+
+    setLoadingSummary(false);
+  };
 
   const filteredEmails = activeFilter === "all" ? emails : emails.filter((email) => email.priority === activeFilter);
 
@@ -85,13 +113,29 @@ function Content() {
             <>
               <button className="md:hidden flex items-center gap-2 text-purple-200 mb-4" onClick={() => setIsEmailListOpen(true)}>← Back to list</button>
               <div className="bg-purple-900/40 backdrop-blur-sm rounded-lg p-4 mb-6 border border-purple-500/20">
-                <h3 className="text-lg font-medium mb-2 text-purple-100">AI Summary</h3>
-                <p className="text-purple-200">{selectedEmail.summary}</p>
-              </div>
-              <div className="bg-purple-900/40 backdrop-blur-sm rounded-lg p-4 mb-6 border border-purple-500/20">
                 <h3 className="text-lg font-medium mb-2 text-purple-100">Email Content</h3>
-                <p className="text-purple-200">{selectedEmail.content}</p>
+                <div className="text-purple-200" dangerouslySetInnerHTML={{ __html: selectedEmail.content }} />
               </div>
+
+              {/* ✅ Generate Summary Button (Only inside selected email) */}
+              <button
+                onClick={handleGenerateSummary}
+                className="mt-2 px-3 py-1.5 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-500 transition"
+                disabled={loadingSummary}
+              >
+                {loadingSummary ? "Generating..." : "Generate Summary"}
+              </button>
+
+              {/* ✅ Show Loader while generating summary */}
+              {loadingSummary && <Loader />}
+
+              {/* ✅ Show Summary Below (Only when generated) */}
+              {selectedEmail.summary && (
+                <div className="mt-3 bg-purple-900/40 backdrop-blur-sm rounded-lg p-3 border border-purple-500/20">
+                  <h3 className="text-sm font-medium text-purple-100">AI Summary:</h3>
+                  <p className="text-sm text-purple-200">{selectedEmail.summary}</p>
+                </div>
+              )}
             </>
           ) : <p className="text-purple-200">Select an email to view details</p>}
         </div>

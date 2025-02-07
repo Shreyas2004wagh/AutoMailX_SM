@@ -194,16 +194,19 @@ app.get("/emails", async (req, res) => {
       const existingEmail = await Email.findOne({ emailId: email.id });
 
       if (!existingEmail) {
+        const summary = await summarizeEmail(email.content);
+        const aiResponse = await generateEmailResponse(email.content);
+
         await Email.create({
           emailId: email.id,
           from: email.from,
           subject: email.subject,
           content: email.content,
-          aiSummary: "", // AI Summary can be added later
+          aiSummary: summary, // AI Summary can be added later
+          aiResponse: aiResponse,
         });
       }
     }
-
     res.json({ emails: fetchedEmails }); // Send response to frontend
   } catch (error) {
     console.error("❌ Error fetching emails:", error);
@@ -214,12 +217,16 @@ app.get("/emails", async (req, res) => {
 
 
 // ✅ Serve Stored Emails with Full Content
-app.get("/get-emails", (req, res) => {
-  if (!fetchedEmails.length) {
-    return res.status(404).json({ error: "No emails fetched yet" });
-  }
+app.get("/get-emails", async(req, res) => {
+  try {
+    const emails = await Email.find(); // Fetch stored emails
+    if (!emails.length) return res.status(404).json({ error: "No emails found" });
 
-  res.json({ emails: fetchedEmails });
+    res.json({ emails });
+  } catch (error) {
+    console.error("❌ Error retrieving emails:", error);
+    res.status(500).json({ error: error.message });
+  }
 });
 // ✅ Fetch Full Email Content Function
 async function getEmailContent(gmail, emailId) {
@@ -238,7 +245,7 @@ async function getEmailContent(gmail, emailId) {
     // Check if the email has parts (multipart emails)
     if (email.data.payload.parts) {
       for (let part of email.data.payload.parts) {
-        if (part.mimeType === "text/plain") {
+        if (part.mimeType === "text/plain" || part.mimeType === "text/html") {
           emailContent = Buffer.from(part.body.data, "base64").toString("utf-8");
           break;
         }

@@ -6,6 +6,7 @@ const EmailSchema = new mongoose.Schema({
   subject: { type: String, required: true }, 
   content: { type: String, required: true }, 
   aiSummary: { type: String }, // AI summary (can be generated later)
+  aiResponse: { type: String },
 }, { timestamps: true });
 
 const Email = mongoose.model("Email", EmailSchema);

@@ -3,8 +3,38 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("./models/User");
 require("dotenv").config();
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const router = express.Router();
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+async function getSummary(text) {
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const prompt = `Please provide a concise summary of the following text:\n\n${text}`;
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    console.log("Gemini Response:", response); // Debugging
+    return response.text();
+  } catch (error) {
+    console.error("Error generating summary:", error);
+    return "Error generating summary";
+  }
+}
+
+
+router.post("/summarize", async (req, res) => {
+  try {
+    const { emailContent } = req.body;
+    if (!emailContent) {
+      return res.status(400).json({ message: "Email content is required" });
+    }
+    const summary = await getSummary(emailContent);
+    res.json({ summary });
+  } catch (error) {
+    res.status(500).json({ message: "Error summarizing email" });
+  }
+});
 
 router.post("/signup", async (req, res) => {
   try {
