@@ -215,6 +215,7 @@ async function getEmailContent(gmail, emailId) {
     });
 
     const headers = email.data.payload.headers;
+    
     const from = headers.find((h) => h.name === "From")?.value || "Unknown";
     const subject = headers.find((h) => h.name === "Subject")?.value || "No Subject";
 

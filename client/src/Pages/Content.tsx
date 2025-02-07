@@ -3,7 +3,7 @@ import { LogOut, Inbox, AlertTriangle, Menu, X } from "lucide-react";
 
 interface Email {
   id: string;
-  from : string;
+  from: string;
   sender: string;
   priority: string;
   sentiment: string;
@@ -65,19 +65,49 @@ function Content() {
 
         {/* Email List */}
         <div className={`w-full md:w-80 border-r border-purple-500/20 bg-black/40 backdrop-blur-sm overflow-y-auto ${!isEmailListOpen && "hidden md:block"}`}>
-          {filteredEmails.length > 0 ? filteredEmails.map((email) => (
-            <div key={email.id} className={`p-4 border-b border-purple-500/20 cursor-pointer transition-colors ${selectedEmail?.id === email.id ? "bg-purple-500/30" : "hover:bg-purple-500/20"}`} onClick={() => { setSelectedEmail(email); if (window.innerWidth < 768) setIsEmailListOpen(false); }}>
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-medium text-purple-100">{email.from}</span>
-                <div className="flex items-center gap-2">
-                  {email.priority === "escalation" && <AlertTriangle className="w-4 h-4 text-red-400" />}
-                  <div className={`w-3 h-3 rounded-full ${email.sentiment === "positive" ? "bg-green-400" : email.sentiment === "neutral" ? "bg-yellow-400" : "bg-red-400"}`} />
-                </div>
-              </div>
-              <p className="text-sm text-purple-200 truncate">{email.subject}</p>
+  {filteredEmails.length > 0 ? (
+    filteredEmails.map((email) => {
+      const fromHeader = email.from || "Unknown Sender";
+      const senderEmail = fromHeader.includes("<")
+        ? fromHeader.substring(fromHeader.indexOf("<") + 1, fromHeader.indexOf(">"))
+        : fromHeader;
+      const senderName = fromHeader.replace(/<.*?>/, "").trim();
+
+      return (
+        <div
+          key={email.id}
+          className={`p-4 border-b border-purple-500/20 cursor-pointer transition-colors ${
+            selectedEmail?.id === email.id ? "bg-purple-500/30" : "hover:bg-purple-500/20"
+          }`}
+          onClick={() => {
+            setSelectedEmail(email);
+            if (window.innerWidth < 768) setIsEmailListOpen(false);
+          }}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="font-medium text-purple-100">{senderName || "Unknown Sender"}</span>
+            <div className="flex items-center gap-2">
+              {email.priority === "escalation" && <AlertTriangle className="w-4 h-4 text-red-400" />}
+              <div
+                className={`w-3 h-3 rounded-full ${
+                  email.sentiment === "positive"
+                    ? "bg-green-400"
+                    : email.sentiment === "neutral"
+                    ? "bg-yellow-400"
+                    : "bg-red-400"
+                }`}
+              />
             </div>
-          )) : <p className="text-purple-200 p-4">No emails available</p>}
+          </div>
+          <p className="text-sm text-purple-200 truncate">{email.subject}</p>
         </div>
+      );
+    })
+  ) : (
+    <p className="text-purple-200 p-4">No emails available</p>
+  )}
+</div>
+
 
         {/* Email Detail */}
         <div className={`flex-1 bg-black/40 backdrop-blur-sm p-4 md:p-6 overflow-y-auto ${isEmailListOpen && "hidden md:block"}`}>
