@@ -6,6 +6,7 @@ const session = require("express-session");
 const passport = require("passport");
 const { google } = require("googleapis");
 const Router = require("./routes.js"); // Your existing routes
+const Email = require("./models/Email.js")
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 require("./auth"); // Import Google OAuth strategy
@@ -188,6 +189,20 @@ app.get("/emails", async (req, res) => {
 
     // Fetch full content for each email and store in fetchedEmails
     fetchedEmails = await Promise.all(messages.map((msg) => getEmailContent(gmail, msg.id)));
+    for (const email of fetchedEmails) {
+      // Check if the email already exists in the database to prevent duplicates
+      const existingEmail = await Email.findOne({ emailId: email.id });
+
+      if (!existingEmail) {
+        await Email.create({
+          emailId: email.id,
+          from: email.from,
+          subject: email.subject,
+          content: email.content,
+          aiSummary: "", // AI Summary can be added later
+        });
+      }
+    }
 
     res.json({ emails: fetchedEmails }); // Send response to frontend
   } catch (error) {
