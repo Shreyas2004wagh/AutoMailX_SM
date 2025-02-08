@@ -39,7 +39,10 @@ app.use(
       "http://localhost:3000",
       "http://localhost:5173",
       "https://project-murex-seven.vercel.app/",
-      "https://project-murex-seven.vercel.app/content"
+      "https://project-murex-seven.vercel.app/content",
+      "https://auto-mail-x-sm.vercel.app/SignUp",
+      "https://auto-mail-x-sm.vercel.app/login",
+      "*"
     ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
