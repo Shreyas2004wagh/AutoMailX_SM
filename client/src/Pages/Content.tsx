@@ -1,15 +1,17 @@
-
 import React, { useState, useEffect } from "react";
 import {
-  LogOut,
   Inbox,
   AlertTriangle,
   Menu,
   X,
   Calendar,
   Loader2,
-  MessageSquare, // Icon for generating a response
+  MessageSquare,
+  ThumbsUp,
+  Meh,
+  Search,  // Import Search
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface Email {
   _id: string;
@@ -30,12 +32,17 @@ function Content() {
   const [isEmailListOpen, setIsEmailListOpen] = useState(true);
   const [summary, setSummary] = useState<string | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
-  const [response, setResponse] = useState<string | null>(null); // State for the generated response
-  const [responseLoading, setResponseLoading] = useState(false); // State for response loading
+  const [response, setResponse] = useState<string | null>(null);
+  const [responseLoading, setResponseLoading] = useState(false);
+  const [responseSaved, setResponseSaved] = useState(false);
+  const [responseSaving, setResponseSaving] = useState(false);
+  const [searchQuery, setSearchQuery] = useState<string>(""); // State for search query
 
-    const fetchAndSummarize = async (emailContent: string) => {
+  const navigate = useNavigate();
+
+  const fetchAndSummarize = async (emailContent: string) => {
     setSummaryLoading(true);
-    setSummary(null); // Clear any previous summary
+    setSummary(null);
 
     try {
       const response = await fetch("http://localhost:5000/summarize", {
@@ -47,66 +54,62 @@ function Content() {
       });
 
       if (!response.ok) {
-        // Use !response.ok for better error handling
-        const errorData = await response.json(); // Attempt to read error details.
+        const errorData = await response.json();
         throw new Error(
-          `Failed to summarize: ${response.status} - ${errorData.message || "Unknown Error"}`
-        ); // Throw a proper error.
+          `Failed to summarize: ${response.status} - ${errorData.message || "Unknown Error"
+          }`
+        );
       }
 
       const data = await response.json();
-      setSummary(data.summary); // Update summary state.
+      setSummary(data.summary);
     } catch (error) {
       console.error("Error summarizing email:", error);
-      setSummary("Failed to generate summary."); // Provide user feedback on error.
+      setSummary("Failed to generate summary.");
     } finally {
       setSummaryLoading(false);
     }
   };
 
   useEffect(() => {
-    // Step 1: Fetch the list of emails (like you already do).
     fetch("http://localhost:5000/get-emails", {
       method: "GET",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
     })
       .then((res) => {
-        return res.ok ? res.json() : Promise.reject("Failed to fetch stored emails");
+        return res.ok
+          ? res.json()
+          : Promise.reject("Failed to fetch stored emails");
       })
       .then((data) => {
         if (Array.isArray(data.emails)) {
-          setEmails(data.emails);
+          setEmails(data.emails.reverse()); //reverse to display latest first
         } else {
           console.error("Invalid data:", data);
         }
       })
       .catch((err) => console.error("Error fetching stored emails:", err));
-      // summary is reset, anytime the active filter has changed
-    setSummary(null)
+
+    setSummary(null);
   }, [activeFilter]);
 
 
-  const filteredEmails =
-    activeFilter === "all"
-      ? emails
-      : emails.filter((email) => email.category === activeFilter);
 
-  // --- New function to generate response ---
   const handleGenerateResponse = async () => {
     if (!selectedEmail) return;
 
     setResponseLoading(true);
-    setResponse(null); // Clear previous response
+    setResponse(null);
+    setResponseSaved(false); // Reset save status
 
     try {
-      // Assuming you'll add a /generate-response endpoint
       const response = await fetch("http://localhost:5000/generate-response", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ emailContent: selectedEmail.content }), // Send email content
+        body: JSON.stringify({ emailContent: selectedEmail.content }),
       });
 
       if (!response.ok) {
@@ -118,7 +121,7 @@ function Content() {
       }
 
       const data = await response.json();
-      setResponse(data.response); // Assuming the endpoint returns { response: "..." }
+      setResponse(data.response);
     } catch (error) {
       console.error("Error generating response:", error);
       setResponse("Failed to generate response.");
@@ -126,6 +129,60 @@ function Content() {
       setResponseLoading(false);
     }
   };
+
+  const handleSaveResponse = async () => {
+    if (!selectedEmail || !response) return;
+
+    setResponseSaving(true);
+
+    try {
+      const saveResponse = await fetch("http://localhost:5000/save-response", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ emailId: selectedEmail.id, response }),
+      });
+
+      if (!saveResponse.ok) {
+        const errorData = await saveResponse.json();
+        throw new Error(
+          `Failed to save response: ${saveResponse.status} - ${errorData.message || "Unknown Error"
+          }`
+        );
+      }
+
+      setResponseSaved(true);
+    } catch (error) {
+      console.error("Error saving response:", error);
+      setResponseSaved(false); // Keep as false on error
+    } finally {
+      setResponseSaving(false);
+    }
+  };
+
+    // --- Filtering Logic ---
+  const filteredEmails = emails.filter((email) => {
+    // Apply category filter
+    if (activeFilter !== "all" && email.category !== activeFilter) {
+      return false;
+    }
+
+    // Apply search filter (if there's a search query)
+    if (searchQuery) {
+      const searchLower = searchQuery.toLowerCase();
+      // Important: Check for undefined/null before calling toLowerCase()
+      return (
+        (email.subject?.toLowerCase() || "").includes(searchLower) ||
+        (email.sender?.toLowerCase() || "").includes(searchLower) ||
+        (email.content?.toLowerCase() || "").includes(searchLower)
+      );
+    }
+
+    return true; // Include the email if no filters exclude it
+  });
+
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900">
@@ -142,14 +199,24 @@ function Content() {
               <Menu className="w-6 h-6" />
             )}
           </button>
-          <h1 className="text-xl md:text-2xl font-bold text-purple-100">
+          <h1
+            className="text-xl md:text-2xl font-bold text-purple-100 cursor-pointer"
+            onClick={() => navigate("/")}
+          >
             AutoMailX
           </h1>
         </div>
-        <button className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-purple-200 hover:bg-purple-500/20 transition-colors">
-          <LogOut className="w-5 h-5" />
-          <span className="hidden md:inline">Logout</span>
-        </button>
+        {/* --- Search Bar --- */}
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-500/20">
+          <Search className="w-5 h-5 text-purple-200" />
+          <input
+            type="text"
+            placeholder="Search emails..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="bg-transparent text-purple-200 focus:outline-none placeholder-purple-400"
+          />
+        </div>
       </header>
 
       <div className="flex h-[calc(100vh-4rem)] relative">
@@ -161,56 +228,31 @@ function Content() {
           <h2 className="text-purple-300 text-xs uppercase font-semibold mb-2 px-4">
             Filters
           </h2>
-          <button
-            className={`flex items-center gap-2 w-full px-4 py-2 rounded-lg transition-colors ${activeFilter === "all"
-                ? "bg-purple-500/30 text-purple-100"
-                : "text-purple-200 hover:bg-purple-500/20"
-              }`}
-            onClick={() => setActiveFilter("all")}
-          >
-            <Inbox className="w-5 h-5" />
-            <span>All Emails</span>
-          </button>
-          <button
-            className={`flex items-center gap-2 w-full px-4 py-2 rounded-lg transition-colors ${activeFilter === "urgent"
-                ? "bg-purple-500/30 text-purple-100"
-                : "text-purple-200 hover:bg-purple-500/20"
-              }`}
-            onClick={() => setActiveFilter("urgent")}
-          >
-            <AlertTriangle className="w-5 h-5 text-red-400" />
-            <span>Urgent</span>
-          </button>
-          <button
-            className={`flex items-center gap-2 w-full px-4 py-2 rounded-lg transition-colors ${activeFilter === "positive"
-                ? "bg-purple-500/30 text-purple-100"
-                : "text-purple-200 hover:bg-purple-500/20"
-              }`}
-            onClick={() => setActiveFilter("positive")}
-          >
-            <span className="text-green-400">👍</span>
-            <span>Positive</span>
-          </button>
-          <button
-            className={`flex items-center gap-2 w-full px-4 py-2 rounded-lg transition-colors ${activeFilter === "neutral"
-                ? "bg-purple-500/30 text-purple-100"
-                : "text-purple-200 hover:bg-purple-500/20"
-              }`}
-            onClick={() => setActiveFilter("neutral")}
-          >
-            <span className="text-green-400">😐</span>
-            <span>Neutral</span>
-          </button>
-          <button
-            className={`flex items-center gap-2 w-full px-4 py-2 rounded-lg transition-colors ${activeFilter === "calendar"
-                ? "bg-purple-500/30 text-purple-100"
-                : "text-purple-200 hover:bg-purple-500/20"
-              }`}
-            onClick={() => setActiveFilter("calendar")}
-          >
-            <Calendar className="w-5 h-5" />
-            <span>Calendar</span>
-          </button>
+          {["all", "urgent", "positive", "neutral", "calendar"].map(
+            (filter) => (
+              <button
+                key={filter}
+                className={`flex items-center gap-2 w-full px-4 py-2 rounded-lg transition-colors ${activeFilter === filter
+                    ? "bg-purple-500/30 text-purple-100"
+                    : "text-purple-200 hover:bg-purple-500/20"
+                  }`}
+                onClick={() => setActiveFilter(filter)}
+              >
+                {filter === "urgent" && (
+                  <AlertTriangle className="w-5 h-5 text-red-400" />
+                )}
+                {filter === "positive" && (
+                  <ThumbsUp className="w-5 h-5 text-green-400" />
+                )}
+                {filter === "neutral" && (
+                  <Meh className="w-5 h-5 text-yellow-400" />
+                )}
+                {filter === "calendar" && <Calendar className="w-5 h-5" />}
+                {filter === "all" && <Inbox className="w-5 h-5" />}
+                <span>{filter.charAt(0).toUpperCase() + filter.slice(1)}</span>
+              </button>
+            )
+          )}
         </nav>
 
         {/* Email List */}
@@ -220,30 +262,38 @@ function Content() {
         >
           {filteredEmails.length > 0 ? (
             filteredEmails.map((email) => {
-              const fromHeader = email.from || "Unknown Sender";
-              const senderName = fromHeader.replace(/<.*?>/, "").trim();
+              const senderName = (email.from || "Unknown Sender")
+                .replace(/<.*?>/, "")
+                .trim();
 
               return (
                 <div
                   key={email._id}
                   className={`p-4 border-b border-purple-500/20 cursor-pointer transition-colors ${selectedEmail?.id === email.id
-                      ? "bg-purple-500/30"
-                      : "hover:bg-purple-500/20"
+                      ? "bg-purple-800/60 text-purple-100"
+                      : "hover:bg-purple-700/40 hover:text-purple-100"
                     }`}
                   onClick={() => {
                     setSelectedEmail(email);
                     fetchAndSummarize(email.content);
-                    setResponse(null); // Clear response when selecting a new email.
+                    setResponse(null);  // Clear previous response
+                    setResponseSaved(false); //clear response
                     if (window.innerWidth < 768) setIsEmailListOpen(false);
                   }}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-medium text-purple-100">
-                      {senderName || "Unknown Sender"}
+                      {senderName}
                     </span>
                     <div className="flex items-center gap-2">
                       {email.category === "urgent" && (
                         <AlertTriangle className="w-4 h-4 text-red-400" />
+                      )}
+                      {email.category === "positive" && (
+                        <ThumbsUp className="w-4 h-4 text-green-400" />
+                      )}
+                      {email.category === "neutral" && (
+                        <Meh className="w-4 h-4 text-yellow-400" />
                       )}
                       <div
                         className={`w-3 h-3 rounded-full ${email.category === "positive"
@@ -257,7 +307,7 @@ function Content() {
                       />
                     </div>
                   </div>
-                  <p className="text-sm text-purple-200 truncate">
+                  <p className="text-sm truncate text-purple-200">
                     {email.subject}
                   </p>
                 </div>
@@ -303,41 +353,59 @@ function Content() {
                 <h3 className="text-lg font-medium mb-2 text-purple-100">
                   Email Content
                 </h3>
-                <p className="text-purple-200">{selectedEmail.content}</p>
+                 <p className="text-purple-200">
+                  {selectedEmail.content
+                    .replace(/https?:\/\/\S+/g, "")
+                    .replace(/<.*?>/g, "")
+                    .trim()}
+                </p>
               </div>
 
-              {/* --- Response Button and Display --- */}
               <button
                 onClick={handleGenerateResponse}
                 className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded mb-4 flex items-center"
-                disabled={responseLoading} // Disable button while loading
+                disabled={responseLoading}
               >
                 {responseLoading ? (
                   <>
-                    <Loader2 className="animate-spin h-5 w-5 mr-2" />
-                    Generating...
+                    <Loader2 className="animate-spin h-5 w-5 mr-2" /> Generating...
                   </>
                 ) : (
                   <>
-                    <MessageSquare className="mr-2 h-5 w-5" />
-                    Generate Response
+                    <MessageSquare className="mr-2 h-5 w-5" /> Generate Response
                   </>
                 )}
               </button>
 
-              {response && ( // Conditionally render the response section
+              {response && (
                 <div className="bg-purple-900/40 backdrop-blur-sm rounded-lg p-4 border border-purple-500/20">
                   <h3 className="text-lg font-medium mb-2 text-purple-100">
                     Generated Response
                   </h3>
-                  <p className="text-purple-200">{response}</p>
+                  <p className="text-purple-200 mb-4">{response}</p>
+                  <button
+                    onClick={handleSaveResponse}
+                    className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center"
+                    disabled={responseSaving}
+                  >
+                    {responseSaving ? (
+                      <>
+                        <Loader2 className="animate-spin h-5 w-5 mr-2" /> Saving...
+                      </>
+                    ) : (
+                      "Save Response"
+                    )}
+                  </button>
+                  {responseSaved && (
+                    <p className="text-green-400 mt-2">
+                      Response saved successfully!
+                    </p>
+                  )}
                 </div>
               )}
             </>
           ) : (
-            <p className="text-purple-200">
-              Select an email to view details
-            </p>
+            <p className="text-purple-200">Select an email to view details</p>
           )}
         </div>
       </div>
