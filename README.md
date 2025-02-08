@@ -67,4 +67,63 @@ Yes ✅
 - Kshitij Kotecha  
 - Pranjal Gosavi  
 
----
+----
+
+## 🚀 How to Run AutomailX Locally
+
+Follow these steps to set up and run the **AutomailX** project on your local system.
+
+### 📥 Step 1: Clone the Repository
+
+```bash
+git clone https://github.com/your-username/automailx.git
+cd automailx
+```
+
+### ⚙️ Step 2: Install Dependencies
+
+Navigate to the project directory and run the following command to install all necessary dependencies:
+
+```bash
+npm install
+```
+
+### ▶️ Step 3: Run the Frontend and Backend Servers
+
+1. **Run the Frontend Server:**  
+   Navigate to the frontend directory (if applicable):
+   
+   ```bash
+   cd frontend
+   npm start
+   ```
+
+2. **Run the Backend Server:**  
+   Open a new terminal window, navigate to the backend directory, and start the server:
+   
+   ```bash
+   cd backend
+   npm start
+   ```
+
+### 🌐 Step 4: Access the Application
+
+- **Frontend:** Open your browser and go to:
+  ```
+  http://localhost:3000
+  ```
+
+- **Backend API:** Accessible at:
+  ```
+  http://localhost:5000 (or the configured port)
+  ```
+
+### 🐞 Troubleshooting
+
+- Ensure all dependencies are correctly installed.
+- Check if the ports are not in conflict with other running services.
+- Review terminal logs for any errors.
+
+You're all set to use **AutomailX** locally! 🚀
+
+
