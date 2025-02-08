@@ -53,7 +53,7 @@ function Content() {
     setSummary(null);
 
     try {
-      const response = await fetch("http://localhost:5000/summarize", {
+      const response = await fetch("https://automailx-sm.onrender.com/summarize", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -80,7 +80,7 @@ function Content() {
   };
 
   useEffect(() => {
-    fetch("http://localhost:5000/get-emails", {
+    fetch("https://automailx-sm.onrender.com/get-emails", {
       method: "GET",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
@@ -111,7 +111,7 @@ function Content() {
     setIsEditing(false); // Exit edit mode if active
 
     try {
-      const response = await fetch("http://localhost:5000/generate-response", {
+      const response = await fetch("https://automailx-sm.onrender.com/generate-response", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -144,7 +144,7 @@ function Content() {
     setResponseSaving(true);
 
     try {
-      const saveResponse = await fetch("http://localhost:5000/save-response", {
+      const saveResponse = await fetch("https://automailx-sm.onrender.com/save-response", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
