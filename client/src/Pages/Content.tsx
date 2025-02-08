@@ -10,6 +10,11 @@ import {
   ThumbsUp,
   Meh,
   Search,
+  Edit,
+  Copy,
+  Save,
+  XCircle,
+  Mail, // Import mail
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -36,7 +41,10 @@ function Content() {
   const [responseLoading, setResponseLoading] = useState(false);
   const [responseSaved, setResponseSaved] = useState(false);
   const [responseSaving, setResponseSaving] = useState(false);
-  const [searchQuery, setSearchQuery] = useState<string>(""); // State for search
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [isEditing, setIsEditing] = useState(false);
+  const [editableResponse, setEditableResponse] = useState<string | null>(null);
+
 
   const navigate = useNavigate();
 
@@ -56,8 +64,7 @@ function Content() {
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(
-          `Failed to summarize: ${response.status} - ${
-            errorData.message || "Unknown Error"
+          `Failed to summarize: ${response.status} - ${errorData.message || "Unknown Error"
           }`
         );
       }
@@ -101,6 +108,7 @@ function Content() {
     setResponseLoading(true);
     setResponse(null);
     setResponseSaved(false); // Reset save status
+    setIsEditing(false); // Exit edit mode if active
 
     try {
       const response = await fetch("http://localhost:5000/generate-response", {
@@ -114,14 +122,14 @@ function Content() {
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(
-          `Failed to generate response: ${response.status} - ${
-            errorData.message || "Unknown Error"
+          `Failed to generate response: ${response.status} - ${errorData.message || "Unknown Error"
           }`
         );
       }
 
       const data = await response.json();
       setResponse(data.response);
+      setEditableResponse(data.response); // Initialize editableResponse
     } catch (error) {
       console.error("Error generating response:", error);
       setResponse("Failed to generate response.");
@@ -147,8 +155,7 @@ function Content() {
       if (!saveResponse.ok) {
         const errorData = await saveResponse.json();
         throw new Error(
-          `Failed to save response: ${saveResponse.status} - ${
-            errorData.message || "Unknown Error"
+          `Failed to save response: ${saveResponse.status} - ${errorData.message || "Unknown Error"
           }`
         );
       }
@@ -162,17 +169,13 @@ function Content() {
     }
   };
 
-  // --- Filtering Logic ---
   const filteredEmails = emails.filter((email) => {
-    // Apply category filter
     if (activeFilter !== "all" && email.category !== activeFilter) {
       return false;
     }
 
-    // Apply search filter (if there's a search query)
     if (searchQuery) {
       const searchLower = searchQuery.toLowerCase();
-      // Important: Check for undefined/null before calling toLowerCase()
       return (
         (email.subject?.toLowerCase() || "").includes(searchLower) ||
         (email.sender?.toLowerCase() || "").includes(searchLower) ||
@@ -180,8 +183,54 @@ function Content() {
       );
     }
 
-    return true; // Include the email if no filters exclude it
+    return true;
   });
+
+  const handleEdit = () => {
+    setIsEditing(true);
+    setEditableResponse(response);
+  };
+
+  const handleSaveEdit = () => {
+    setResponse(editableResponse);
+    setIsEditing(false);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+  };
+
+  const handleCopy = async () => {
+    const textToCopy = editableResponse || response;
+    if (!textToCopy) return;
+
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+    } catch (err) {
+      console.error("Failed to copy text: ", err);
+    }
+  };
+
+  // --- Reply Function ---
+const handleReply = () => {
+    if (!selectedEmail) return;
+
+    // Extract the email address (same as before)
+    const fromMatch = selectedEmail.from.match(/<([^>]+)>/);
+    const senderEmail = fromMatch ? fromMatch[1] : selectedEmail.from;
+
+    const responseText = editableResponse || response || "";
+
+    // Construct the Gmail compose URL with query parameters
+    const gmailComposeURL = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(
+      senderEmail
+    )}&su=${encodeURIComponent(
+      `Re: ${selectedEmail.subject}`
+    )}&body=${encodeURIComponent(responseText)}`;
+
+    // Open Gmail compose in a new tab/window
+    window.open(gmailComposeURL, "_blank");
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900">
@@ -221,9 +270,8 @@ function Content() {
       <div className="flex h-[calc(100vh-4rem)] relative">
         {/* Sidebar */}
         <nav
-          className={`fixed md:static inset-y-0 left-0 w-64 md:w-48 bg-black/40 backdrop-blur-sm border-r border-purple-500/20 p-4 transition-transform z-30 ${
-            isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-          } md:translate-x-0`}
+          className={`fixed md:static inset-y-0 left-0 w-64 md:w-48 bg-black/40 backdrop-blur-sm border-r border-purple-500/20 p-4 transition-transform z-30 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+            } md:translate-x-0`}
         >
           <h2 className="text-purple-300 text-xs uppercase font-semibold mb-2 px-4">
             Filters
@@ -232,11 +280,10 @@ function Content() {
             (filter) => (
               <button
                 key={filter}
-                className={`flex items-center gap-2 w-full px-4 py-2 rounded-lg transition-colors ${
-                  activeFilter === filter
+                className={`flex items-center gap-2 w-full px-4 py-2 rounded-lg transition-colors ${activeFilter === filter
                     ? "bg-purple-500/30 text-purple-100"
                     : "text-purple-200 hover:bg-purple-500/20"
-                }`}
+                  }`}
                 onClick={() => setActiveFilter(filter)}
               >
                 {filter === "urgent" && (
@@ -258,9 +305,8 @@ function Content() {
 
         {/* Email List */}
         <div
-          className={`w-full md:w-80 border-r border-purple-500/20 bg-black/40 backdrop-blur-sm overflow-y-auto ${
-            !isEmailListOpen && "hidden md:block"
-          }`}
+          className={`w-full md:w-80 border-r border-purple-500/20 bg-black/40 backdrop-blur-sm overflow-y-auto ${!isEmailListOpen && "hidden md:block"
+            }`}
         >
           {filteredEmails.length > 0 ? (
             filteredEmails.map((email) => {
@@ -271,11 +317,10 @@ function Content() {
               return (
                 <div
                   key={email._id}
-                  className={`p-4 border-b border-purple-500/20 cursor-pointer transition-colors ${
-                    selectedEmail?.id === email.id
+                  className={`p-4 border-b border-purple-500/20 cursor-pointer transition-colors ${selectedEmail?.id === email.id
                       ? "bg-purple-800/60 text-purple-100"
                       : "hover:bg-purple-700/40 hover:text-purple-100"
-                  }`}
+                    }`}
                   onClick={() => {
                     setSelectedEmail(email);
                     fetchAndSummarize(email.content);
@@ -299,15 +344,14 @@ function Content() {
                         <Meh className="w-4 h-4 text-yellow-400" />
                       )}
                       <div
-                        className={`w-3 h-3 rounded-full ${
-                          email.category === "positive"
+                        className={`w-3 h-3 rounded-full ${email.category === "positive"
                             ? "bg-green-400"
                             : email.category === "neutral"
-                            ? "bg-yellow-400"
-                            : email.category === "urgent"
-                            ? "bg-red-400"
-                            : "bg-blue-500"
-                        }`}
+                              ? "bg-yellow-400"
+                              : email.category === "urgent"
+                                ? "bg-red-400"
+                                : "bg-blue-500"
+                          }`}
                       />
                     </div>
                   </div>
@@ -324,9 +368,8 @@ function Content() {
 
         {/* Email Detail */}
         <div
-          className={`flex-1 bg-black/40 backdrop-blur-sm p-4 md:p-6 overflow-y-auto ${
-            isEmailListOpen && "hidden md:block"
-          }`}
+          className={`flex-1 bg-black/40 backdrop-blur-sm p-4 md:p-6 overflow-y-auto ${isEmailListOpen && "hidden md:block"
+            }`}
         >
           {selectedEmail ? (
             <>
@@ -360,8 +403,8 @@ function Content() {
                 </h3>
                 <p className="text-purple-200">
                   {selectedEmail.content
-                    .replace(/https?:\/\/\S+/g, "") // Remove URLs
-                    .replace(/<.*?>/g, "")          // Remove HTML tags
+                    .replace(/https?:\/\/\S+/g, "")
+                    .replace(/<.*?>/g, "")
                     .trim()}
                 </p>
               </div>
@@ -387,10 +430,63 @@ function Content() {
                   <h3 className="text-lg font-medium mb-2 text-purple-100">
                     Generated Response
                   </h3>
-                  <p className="text-purple-200 mb-4">{response}</p>
-                  <button
+                  {/* Conditional Rendering */}
+                  {isEditing ? (
+                    <>
+                      <textarea
+                        value={editableResponse || ""}
+                        onChange={(e) => setEditableResponse(e.target.value)}
+                        className="w-full p-2 bg-gray-800 text-purple-200 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        rows={4}
+                      />
+                      <div className="mt-2 flex gap-2">
+                        <button
+                          onClick={handleSaveEdit}
+                          className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center"
+                        >
+                          <Save className="mr-2 h-5 w-5" /> Save
+                        </button>
+                        <button
+                          onClick={handleCancelEdit}
+                          className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded flex items-center"
+
+                        >
+                          <XCircle className="mr-2 h-5 w-5" /> Cancel
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-purple-200 mb-4">{response}</p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleEdit}
+                          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded flex items-center"
+                        >
+                          <Edit className="mr-2 h-5 w-5" /> Edit
+                        </button>
+                        <button
+                          onClick={handleCopy}
+                          className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded flex items-center"
+                        >
+                          <Copy className="mr-2 h-5 w-5" /> Copy
+                        </button>
+                         {/* --- Reply Button --- */}
+                        <button
+                          onClick={handleReply}
+                          className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded flex items-center"
+                        >
+                          <Mail className="mr-2 h-5 w-5" /> Reply
+                        </button>
+
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+                 <button
                     onClick={handleSaveResponse}
-                    className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center"
+                    className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center mt-4"
                     disabled={responseSaving}
                   >
                     {responseSaving ? (
@@ -406,8 +502,6 @@ function Content() {
                       Response saved successfully!
                     </p>
                   )}
-                </div>
-              )}
             </>
           ) : (
             <p className="text-purple-200">Select an email to view details</p>
