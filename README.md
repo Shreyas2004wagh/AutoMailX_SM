@@ -76,7 +76,7 @@ Follow these steps to set up and run the **AutomailX** project on your local sys
 ### 📥 Step 1: Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/automailx.git
+git clone https://github.com/Shreyas2004wagh/AutoMailX_SM.git
 cd automailx
 ```
 
