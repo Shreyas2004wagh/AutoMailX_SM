@@ -42,6 +42,7 @@ app.use(
       "https://project-murex-seven.vercel.app/content",
       "https://auto-mail-x-sm.vercel.app/SignUp",
       "https://auto-mail-x-sm.vercel.app/login",
+      "https://auto-mail-x-sm.vercel.app",
       "*"
     ],
     methods: ["GET", "POST", "PUT", "DELETE"],
