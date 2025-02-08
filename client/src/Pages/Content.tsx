@@ -9,6 +9,7 @@ import {
   MessageSquare,
   ThumbsUp,
   Meh,
+  Search,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -35,6 +36,7 @@ function Content() {
   const [responseLoading, setResponseLoading] = useState(false);
   const [responseSaved, setResponseSaved] = useState(false);
   const [responseSaving, setResponseSaving] = useState(false);
+  const [searchQuery, setSearchQuery] = useState<string>(""); // State for search
 
   const navigate = useNavigate();
 
@@ -83,7 +85,7 @@ function Content() {
       })
       .then((data) => {
         if (Array.isArray(data.emails)) {
-          setEmails(data.emails.reverse());
+          setEmails(data.emails.reverse()); //reverse to display latest first
         } else {
           console.error("Invalid data:", data);
         }
@@ -93,17 +95,12 @@ function Content() {
     setSummary(null);
   }, [activeFilter]);
 
-  const filteredEmails =
-    activeFilter === "all"
-      ? emails
-      : emails.filter((email) => email.category === activeFilter);
-
   const handleGenerateResponse = async () => {
     if (!selectedEmail) return;
 
     setResponseLoading(true);
     setResponse(null);
-    setResponseSaved(false);
+    setResponseSaved(false); // Reset save status
 
     try {
       const response = await fetch("http://localhost:5000/generate-response", {
@@ -159,14 +156,36 @@ function Content() {
       setResponseSaved(true);
     } catch (error) {
       console.error("Error saving response:", error);
-      setResponseSaved(false);
+      setResponseSaved(false); // Keep as false on error
     } finally {
       setResponseSaving(false);
     }
   };
 
+  // --- Filtering Logic ---
+  const filteredEmails = emails.filter((email) => {
+    // Apply category filter
+    if (activeFilter !== "all" && email.category !== activeFilter) {
+      return false;
+    }
+
+    // Apply search filter (if there's a search query)
+    if (searchQuery) {
+      const searchLower = searchQuery.toLowerCase();
+      // Important: Check for undefined/null before calling toLowerCase()
+      return (
+        (email.subject?.toLowerCase() || "").includes(searchLower) ||
+        (email.sender?.toLowerCase() || "").includes(searchLower) ||
+        (email.content?.toLowerCase() || "").includes(searchLower)
+      );
+    }
+
+    return true; // Include the email if no filters exclude it
+  });
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900">
+      {/* Header with Search */}
       <header className="bg-black/40 backdrop-blur-sm border-b border-purple-500/20 px-4 md:px-6 py-4 flex justify-between items-center">
         <div className="flex items-center gap-2">
           <button
@@ -185,6 +204,17 @@ function Content() {
           >
             AutoMailX
           </h1>
+        </div>
+        {/* --- Search Bar --- */}
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-500/20">
+          <Search className="w-5 h-5 text-purple-200" />
+          <input
+            type="text"
+            placeholder="Search emails..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="bg-transparent text-purple-200 focus:outline-none placeholder-purple-400"
+          />
         </div>
       </header>
 
@@ -249,7 +279,8 @@ function Content() {
                   onClick={() => {
                     setSelectedEmail(email);
                     fetchAndSummarize(email.content);
-                    setResponse(null);
+                    setResponse(null); // Clear previous response
+                    setResponseSaved(false); // Clear saved status
                     if (window.innerWidth < 768) setIsEmailListOpen(false);
                   }}
                 >
@@ -280,7 +311,7 @@ function Content() {
                       />
                     </div>
                   </div>
-                  <p className="text-sm truncate">
+                  <p className="text-sm truncate text-purple-200">
                     {email.subject}
                   </p>
                 </div>
@@ -329,8 +360,8 @@ function Content() {
                 </h3>
                 <p className="text-purple-200">
                   {selectedEmail.content
-                    .replace(/https?:\/\/\S+/g, "")
-                    .replace(/<.*?>/g, "")
+                    .replace(/https?:\/\/\S+/g, "") // Remove URLs
+                    .replace(/<.*?>/g, "")          // Remove HTML tags
                     .trim()}
                 </p>
               </div>
