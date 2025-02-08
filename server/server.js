@@ -35,7 +35,12 @@ const users = [
 
 app.use(
   cors({
-    origin: ["http://localhost:3000", "http://localhost:5173"],
+    origin: [
+      "http://localhost:3000",
+      "http://localhost:5173",
+      "https://project-murex-seven.vercel.app/",
+      "https://project-murex-seven.vercel.app/content"
+    ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   })
