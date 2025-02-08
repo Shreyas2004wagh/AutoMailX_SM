@@ -110,7 +110,7 @@ npm install
 
 - **Frontend:** Open your browser and go to:
   ```
-  http://localhost:5000
+  http://localhost:5173
   ```
 
 - **Backend API:** Accessible at:
