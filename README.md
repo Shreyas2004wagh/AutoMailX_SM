@@ -1,4 +1,3 @@
-
 # 📩 **AutoMailX**
 
 ## **Short Description**  
@@ -34,7 +33,7 @@ This allows users to stay organized, save time, and focus on what matters most.
 Yes ✅  
 
 ## **PromptRepo Google Sheet Link**  
-[(https://docs.google.com/spreadsheets/d/1fUnhkTqJ5Ve1Q8z9zN_h-J548C88i9sACakdfe-Xfsw/edit?usp=sharing)]  
+[PromptRepo Google Sheet](https://docs.google.com/spreadsheets/d/1fUnhkTqJ5Ve1Q8z9zN_h-J548C88i9sACakdfe-Xfsw/edit?usp=sharing)  
 
 ## **What Kind of AI Model Are You Using?**  
 - Classification  
@@ -53,10 +52,17 @@ Yes ✅
 
 ---
 
+## **Live Links**
+- **Frontend:** [AutoMailX Frontend](https://auto-mail-x-sm.vercel.app/)  
+- **Backend:** [AutoMailX Backend](https://automailx-sm.onrender.com/)  
+
+---
+
+## **Screenshots**  
+
 ![Screenshot 2025-02-06 162556](https://github.com/user-attachments/assets/f91e8d28-1a7c-4e60-87f8-6fb9a93006ac)  
 
-![Screenshot 2025-02-06 200243](https://github.com/user-attachments/assets/688ced5e-c24a-41ab-add0-fa44e53b0739)
-
+![Screenshot 2025-02-06 200243](https://github.com/user-attachments/assets/688ced5e-c24a-41ab-add0-fa44e53b0739)  
 
 ---
 
@@ -67,20 +73,20 @@ Yes ✅
 - Kshitij Kotecha  
 - Pranjal Gosavi  
 
-----
+---
 
-## 🚀 How to Run AutomailX Locally
+## 🚀 How to Run AutoMailX Locally  
 
-Follow these steps to set up and run the **AutomailX** project on your local system.
+Follow these steps to set up and run the **AutoMailX** project on your local system.
 
-### 📥 Step 1: Clone the Repository
+### 💅 Step 1: Clone the Repository  
 
 ```bash
 git clone https://github.com/Shreyas2004wagh/AutoMailX_SM.git
 cd automailx
 ```
 
-### ⚙️ Step 2: Install Dependencies
+### ⚙️ Step 2: Install Dependencies  
 
 Navigate to the project directory and run the following command to install all necessary dependencies:
 
@@ -88,10 +94,10 @@ Navigate to the project directory and run the following command to install all n
 npm install
 ```
 
-### ▶️ Step 3: Run the Frontend and Backend Servers
+### ▶️ Step 3: Run the Frontend and Backend Servers  
 
 1. **Run the Frontend Server:**  
-   Navigate to the frontend directory (if applicable):
+   Navigate to the frontend directory (if applicable):  
    
    ```bash
    cd client
@@ -99,31 +105,36 @@ npm install
    ```
 
 2. **Run the Backend Server:**  
-   Open a new terminal window, navigate to the backend directory, and start the server:
+   Open a new terminal window, navigate to the backend directory, and start the server:  
    
    ```bash
    cd server
    npm start
    ```
 
-### 🌐 Step 4: Access the Application
+### 🌐 Step 4: Access the Application  
 
-- **Frontend:** Open your browser and go to:
+- **Frontend:** Open your browser and go to:  
   ```
   http://localhost:5173
   ```
 
-- **Backend API:** Accessible at:
+- **Backend API:** Accessible at:  
   ```
   http://localhost:5000 (or the configured port)
   ```
 
-### 🐞 Troubleshooting
+### 🛠️ Troubleshooting  
 
-- Ensure all dependencies are correctly installed.
-- Check if the ports are not in conflict with other running services.
-- Review terminal logs for any errors.
+- Ensure all dependencies are correctly installed.  
+- Check if the ports are not in conflict with other running services.  
+- Review terminal logs for any errors.  
 
-You're all set to use **AutomailX** locally! 🚀
+You're all set to use **AutoMailX** locally! 🚀  
 
+---
+
+## **🎥 Loom Video Demo**  
+Watch the complete demo of **AutoMailX** in action:  
+[AutoMailX Loom Video](https://www.loom.com/share/34f7cad2331840058c5ae9b4cddbf28b?sid=614353db-1622-49da-b70c-f6824a4f7c11)  
 
