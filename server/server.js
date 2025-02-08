@@ -148,6 +148,30 @@ app.post("/summarize", async (req, res) => {
 }
 });
 
+// Add this new route
+app.post("/generate-response", async (req, res) => {
+  try {
+    const { emailContent } = req.body;
+    if (!emailContent) {
+      return res.status(400).json({ message: "Email content is required" });
+    }
+
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+
+    const prompt = `Given the following email, please generate a suitable response:\n\n${emailContent}\n\nResponse:`;
+
+    const result = await model.generateContent(prompt);
+    const responseText = await result.response.text(); // Important: get .text()
+
+    res.json({ response: responseText }); // Send back the response text
+  } catch (error) {
+    console.error("Error generating response:", error);
+    res
+      .status(500)
+      .json({ message: "Error generating response", error: error.message });
+  }
+});
+
 // --- Modified /get-emails Route ---
 
 app.get("/get-emails", async (req, res) => {
