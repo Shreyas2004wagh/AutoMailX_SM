@@ -94,7 +94,7 @@ npm install
    Navigate to the frontend directory (if applicable):
    
    ```bash
-   cd frontend
+   cd client
    npm start
    ```
 
@@ -102,7 +102,7 @@ npm install
    Open a new terminal window, navigate to the backend directory, and start the server:
    
    ```bash
-   cd backend
+   cd server
    npm start
    ```
 
@@ -110,7 +110,7 @@ npm install
 
 - **Frontend:** Open your browser and go to:
   ```
-  http://localhost:3000
+  http://localhost:5000
   ```
 
 - **Backend API:** Accessible at:
