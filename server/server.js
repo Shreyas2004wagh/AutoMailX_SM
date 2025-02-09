@@ -1,148 +1,127 @@
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
-const dotenv = require("dotenv");
 const session = require("express-session");
 const passport = require("passport");
 const { google } = require("googleapis");
-const Router = require("./routes.js"); // Your existing routes
+const Router = require("./routes.js"); // Import your existing routes
 require("./auth"); // Import Google OAuth strategy
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY; // Ensure you have this in .env
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 const axios = require("axios");
 const Email = require("./models/Email.js");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-
-dotenv.config();
-
 const app = express();
 const port = process.env.PORT || 5000;
 
-// ✅ Connect to MongoDB
+// CORS Configuration
+const corsOptions = {
+  origin: [
+    "http://localhost:3000", // Local development
+    "http://localhost:5173", // Possibly another local dev port
+    "https://auto-mail-x-sm.vercel.app",
+    "https://auto-mail-x-sm.vercel.app/content",
+    "https://auto-mail-x-sm.vercel.app/Login",
+    "https://auto-mail-x-sm.vercel.app/login",
+    "https://auto-mail-x-sm.vercel.app/SignUp",
+    "https://auto-mail-x-sm.vercel.app/Emails",
+    "https://auto-mail-x-sm.vercel.app/",
+    "https://automailx-sm.onrender.com/get-emails",
+    "*",
+    "**"
+     // Your production frontend
+  ],
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+  credentials: true, // IMPORTANT for sessions
+  optionsSuccessStatus: 204, // Best practice for preflight
+};
+app.use(cors(corsOptions));
+
+// Database Connection (Error Handling Improved)
 mongoose
-  .connect(process.env.DATABASE_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
+  .connect(process.env.DATABASE_URI) // No need for the deprecated options
   .then(() => console.log("✅ Connected to MongoDB"))
-  .catch((err) => console.error("❌ MongoDB connection error:", err));
+  .catch((err) => {
+    console.error("❌ MongoDB connection error:", err);
+    process.exit(1); // Exit the process on a fatal error
+  });
 
-// ✅ Dummy User Database (replace with a real database in production)
-const users = [
-  { username: "testuser", password: "password123" }, // Example user
-];
-
-app.use(
-  cors({
-    origin: [
-      "http://localhost:3000",
-      "http://localhost:5173",
-      "https://project-murex-seven.vercel.app/",
-      "https://project-murex-seven.vercel.app/content",
-      "https://auto-mail-x-sm.vercel.app/SignUp",
-      "https://auto-mail-x-sm.vercel.app/login",
-      "https://auto-mail-x-sm.vercel.app",
-      "*"
-    ],
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    credentials: true,
-  })
-);
-
+// Middleware
 app.use(express.json());
-app.use((req, res, next) => {
-  console.log("Session data:", req.session);
-  next();
-});
 
-
-// ✅ Session setup
+// Session Configuration (More Secure)
 app.use(
   session({
-    secret: process.env.JWT_SECRET, // Using JWT_SECRET from .env
+    secret: process.env.JWT_SECRET, // Use a strong secret!
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false, // Better for privacy/efficiency
     cookie: {
       httpOnly: true,
-      secure: false, // Set to true if using HTTPS
-      maxAge: 24 * 60 * 60 * 1000, // 1 day
+      secure: process.env.NODE_ENV === "production", // HTTPS only in production
+      maxAge: 24 * 60 * 60 * 1000, // 1 day in milliseconds
+      sameSite: "lax", // CSRF protection.  'strict' might be too restrictive.
     },
   })
 );
 
+// Passport Initialization
 app.use(passport.initialize());
 app.use(passport.session());
 
-// ✅ Home Route
+// --- Routes ---
+
+// Home Route
 app.get("/", (req, res) => {
-  try {
-    res.json({ message: "Server is running successfully 🚀" });
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Internal Server Error");
-  }
+  res.json({ message: "Server is running successfully 🚀" });
 });
 
+// Gemini Classification Function (with better error handling)
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 const classifyEmailWithGemini = async (emailContent) => {
+  if (!GEMINI_API_KEY) {
+    console.error("GEMINI_API_KEY is not set");
+    return "neutral"; // Return a default or throw error
+  }
+
   try {
-    // Craft a CLEAR prompt for Gemini:
-    const prompt = `You are an email classification expert. Analyze the following email and determine its primary category.  Return ONLY ONE of the following categories: urgent, positive, neutral, calendar.
+    const prompt = `You are an email classification expert. Analyze the following email and determine its primary category. Return ONLY ONE of the following categories: urgent, positive, neutral, calendar.
 
-    * urgent: High-priority issues, security alerts, requiring immediate action.
-    * positive:  Positive feedback, confirmations, successful outcomes, greetings.
-    * neutral: General information, updates, non-urgent communication.
-    * calendar: Meeting requests, event invitations, scheduling confirmations.
+Email Content:
+${emailContent}
 
-    Email Content:
-    ${emailContent}
+Category:`;
 
-    Category:`; //  CRUCIAL: End with "Category:" for consistent results.
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
 
-    const response = await axios.post(
-      GEMINI_API_URL,
-      {
-        contents: [{ parts: [{ text: prompt }] }],
-      }
-      //  { headers: { "Content-Type": "application/json" } }  // Not needed, axios does this by default
-    );
-
-    //  More robust result parsing:
-    let classification =
-      response.data?.candidates?.[0]?.content?.parts?.[0]?.text
-        ?.trim()
-        .toLowerCase() || "neutral";
-
-    //Handle unexpected output formats
+    let classification = responseText.trim().toLowerCase() || "neutral";
     if (
       !["urgent", "positive", "neutral", "calendar"].includes(classification)
     ) {
       classification = "neutral";
     }
-
     return classification;
   } catch (error) {
-    console.error("Gemini API Error:", error.response?.data || error.message); // Log detailed errors!
-    return "neutral"; // Default to neutral on error.
+    console.error("Gemini API Error:", error); // Log the full error object
+    return "neutral"; // Default category
   }
 };
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
+// Summarization Route
 async function getSummary(text) {
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-pro" });
     const prompt = `Please provide a concise summary of the following text:\n\n${text}`;
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    console.log("Gemini Response:", response); // Debugging
     return response.text();
   } catch (error) {
     console.error("Error generating summary:", error);
     return "Error generating summary";
   }
 }
-
 
 app.post("/summarize", async (req, res) => {
   try {
@@ -151,13 +130,16 @@ app.post("/summarize", async (req, res) => {
       return res.status(400).json({ message: "Email content is required" });
     }
     const summary = await getSummary(emailContent);
-    res.json({ summary });
+    res.status(200).json({ summary }); // Use consistent status codes
   } catch (error) {
-    res.status(500).json({ message: "Error summarizing email"});
-}
+    console.error("Error in /summarize:", error); // More detailed logging
+    res
+      .status(500)
+      .json({ message: "Error summarizing email", error: error.message }); // Include error details
+  }
 });
 
-// Add this new route
+// Response Generation Route
 app.post("/generate-response", async (req, res) => {
   try {
     const { emailContent } = req.body;
@@ -166,99 +148,141 @@ app.post("/generate-response", async (req, res) => {
     }
 
     const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-
     const prompt = `Given the following email, please generate a suitable response:\n\n${emailContent}\n\nResponse:`;
-
     const result = await model.generateContent(prompt);
-    const responseText = await result.response.text(); // Important: get .text()
-
-    res.json({ response: responseText }); // Send back the response text
+    const responseText = await result.response.text();
+    res.status(200).json({ response: responseText });
   } catch (error) {
-    console.error("Error generating response:", error);
+    console.error("Error in /generate-response:", error);
     res
       .status(500)
       .json({ message: "Error generating response", error: error.message });
   }
 });
 
-// --- Modified /get-emails Route ---
+// Save response. Make sure the client is sending correct request body data
+app.post("/save-response", async (req, res) => {
+  try {
+    const { emailId, response } = req.body; //receive emailID and the response that user confirmed
+    if (!emailId || !response) {
+      return res
+        .status(400)
+        .json({ message: "Email Id and response are required" }); //
+    }
+    // Find email, and upate. {new:true} --> return the updated doc
+    const updateEmail = await Email.findOneAndUpdate(
+      { emailId: emailId },
+      { aiSummary: response },
+      { new: true }
+    );
 
+    if (!updateEmail) {
+      return res.status(404).json({ message: "Email not found" });
+    }
+    //send success response with update data
+    res.status(200).json({ message: "Response saved", email: updateEmail });
+  } catch (error) {
+    console.error("Error saving response:", error);
+    res
+      .status(500)
+      .json({ message: "Error saving response", error: error.message }); //send to frontend
+  }
+});
+
+// Get Emails with Classification (Improved)
 app.get("/get-emails", async (req, res) => {
   try {
-    const emails = await Email.find().lean(); // Use .lean() for performance!
+    const emails = await Email.find().lean(); // Use .lean()
 
     const classifiedEmails = await Promise.all(
       emails.map(async (email) => {
-        //check in the db if the email already exits category
         if (email.category) {
-          return email;
+          return email; // Already classified
         }
 
         const combinedContent = `${email.subject} ${email.content}`;
         const category = await classifyEmailWithGemini(combinedContent);
 
-        // Update the email document in the database WITH THE CATEGORY
-        await Email.updateOne(
-          { _id: email._id },
-          { $set: { category: category } }
-        ); //MongoDB Id always has an "_"
-
-        //add category to email
-        return { ...email, category };
+        // Update the email in DB. Await this to complete!
+        const updatedEmail = await Email.findByIdAndUpdate(
+          email._id,
+          { $set: { category: category } },
+          { new: true, lean: true } // Return the modified document
+        );
+        //If could not update for any reasion
+        return updatedEmail || { ...email, category: "neutral" }; // Fallback
       })
     );
 
-    res.json({ emails: classifiedEmails });
+    res.status(200).json({ emails: classifiedEmails }); // 200 OK
   } catch (error) {
-    console.error("Error fetching and classifying emails:", error);
-    res.status(500).json({ error: "Failed to fetch and classify emails." }); // Consistent error message.
+    console.error("Error in /get-emails:", error);
+    res
+      .status(500)
+      .json({
+        error: "Failed to fetch and classify emails.",
+        message: error.message,
+      }); // More detail
   }
 });
 
-//IMPORTANT -- This should go before any route that might need to read the emails from Gmail
-//Fetch All emails
+// Fetch Emails from Gmail (Simplified and more robust)
 app.get("/emails", async (req, res) => {
-  if (!req.session.user)
+  if (!req.session.user) {
     return res.status(401).json({ error: "User not authenticated" });
+  }
 
   const auth = new google.auth.OAuth2();
   auth.setCredentials({ access_token: req.session.user.accessToken });
   const gmail = google.gmail({ version: "v1", auth });
-  let fetchedEmails = [];
+
   try {
     const response = await gmail.users.messages.list({
       userId: "me",
-      maxResults: 10,
+      maxResults: 10, // Or however many you want
     });
-    const messages = response.data.messages || [];
 
-    // Fetch full content for each email and store in fetchedEmails
-    fetchedEmails = await Promise.all(
+    const messages = response.data.messages || [];
+    const fetchedEmails = await Promise.all(
       messages.map((msg) => getEmailContent(gmail, msg.id))
     );
+
+    // Save/Update emails in database.
     for (const email of fetchedEmails) {
-      // Check if the email already exists in the database to prevent duplicates
       const existingEmail = await Email.findOne({ emailId: email.id });
 
-      if (!existingEmail) {
+      if (existingEmail) {
+        //Update exisiting
+        await Email.updateOne(
+          { emailId: email.id },
+          {
+            $set: {
+              from: email.from,
+              subject: email.subject,
+              content: email.content,
+              // No aiSummary as new ones should come up un summarized
+            },
+          }
+        );
+      } else {
         await Email.create({
           emailId: email.id,
           from: email.from,
           subject: email.subject,
           content: email.content,
-          aiSummary: "", // AI Summary can be added later
+          aiSummary: "",
         });
       }
     }
-    return res.json({ emails: fetchedEmails }); // Send response to frontend  //Return for an early return
+
+    res.status(200).json({ emails: fetchedEmails });
   } catch (error) {
-    console.error("❌ Error fetching emails:", error);
+    console.error("Error fetching emails from Gmail:", error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// ... (rest of your server.js file: logout, debug, etc.)
-
+//Helper function to get each emails (centralize error handling)
 async function getEmailContent(gmail, emailId) {
   try {
     const email = await gmail.users.messages.get({
@@ -267,171 +291,108 @@ async function getEmailContent(gmail, emailId) {
     });
 
     const headers = email.data.payload.headers;
-
     const from = headers.find((h) => h.name === "From")?.value || "Unknown";
     const subject =
       headers.find((h) => h.name === "Subject")?.value || "No Subject";
 
-    let emailContent = "No Content Available";
-
-    // Check if the email has parts (multipart emails)
+    let content = "No Content Available";
     if (email.data.payload.parts) {
-      for (let part of email.data.payload.parts) {
-        if (part.mimeType === "text/plain") {
-          emailContent = Buffer.from(part.body.data, "base64").toString(
-            "utf-8"
-          );
-          break;
-        }
+      // Multipart email.  Prioritize plain text.
+      const textPart = email.data.payload.parts.find(
+        (part) => part.mimeType === "text/plain"
+      );
+      const htmlPart = email.data.payload.parts.find(
+        (part) => part.mimeType === "text/html"
+      );
+
+      if (textPart) {
+        content = Buffer.from(textPart.body.data, "base64").toString("utf-8");
+      } else if (htmlPart) {
+        content = Buffer.from(htmlPart.body.data, "base64").toString("utf-8");
       }
-    } else {
-      // If it's a single-part email
-      emailContent = Buffer.from(
-        email.data.payload.body.data || "",
-        "base64"
-      ).toString("utf-8");
+    } else if (email.data.payload.body && email.data.payload.body.data) {
+      content = Buffer.from(email.data.payload.body.data, "base64").toString(
+        "utf-8"
+      );
     }
 
-    return { id: emailId, from, subject, content: emailContent };
+    return { id: emailId, from, subject, content };
   } catch (error) {
-    console.error("❌ Error fetching email content:", error);
+    console.error("Error in getEmailContent:", error); //Detailed error
     return {
       id: emailId,
       from: "Unknown",
       subject: "Error",
-      content: "Failed to fetch email content.",
+      content: "Failed to fetch content.",
     };
   }
 }
 
-// ✅ Login Route
+// Login Route (Simplified - Consider using a database)
 app.post("/login", (req, res) => {
   const { username, password } = req.body;
-
-  // Validate credentials
   const user = users.find(
     (u) => u.username === username && u.password === password
-  );
+  ); // DUMMY
 
-  if (!user) {
+  if (user) {
+    req.session.user = { username: user.username }; //set User session
+    res
+      .status(200)
+      .json({ message: "Login successful", user: req.session.user });
+  } else {
     return res.status(401).json({ error: "Invalid credentials" });
   }
-
-  // Save user in session
-  req.session.user = { username: user.username };
-  res.json({ message: "Login successful", user: req.session.user });
 });
 
-// ✅ Google OAuth Login
+// Google OAuth Routes (Keep these as they are mostly correct)
 app.get(
   "/auth/google",
   passport.authenticate("google", {
-    scope: ["email", "profile", "https://www.googleapis.com/auth/gmail.readonly"],
+    scope: [
+      "email",
+      "profile",
+      "https://www.googleapis.com/auth/gmail.readonly",
+    ],
   })
 );
 
-// ✅ Google OAuth Callback
 app.get(
   "/auth/google/callback",
   passport.authenticate("google", { failureRedirect: "/" }),
   (req, res) => {
-    console.log("✅ User Authenticated:", req.user);
-
-    // Store user details and access token in the session
+    console.log("User Authenticated:", req.user);
     req.session.user = {
       id: req.user.id,
       accessToken: req.user.accessToken,
-      refreshToken: req.user.refreshToken, // Optional for token refreshing
+      refreshToken: req.user.refreshToken,
       email: req.user.email,
     };
 
-    // Redirect to frontend
-    res.redirect("http://localhost:5000/dashboard");
+    res.redirect("http://localhost:5173/content"); //change if necessary
   }
 );
 
-
-
-// ✅ Fetch Emails Route
-let fetchedEmails = []; // Global variable to store fetched emails
-
-// ✅ Route to Fetch and Store Emails
-app.get("/emails", async (req, res) => {
-  console.log("Session data in /emails route:", req.session); // Debugging
-
-  if (!req.session.user) {
-    return res.status(401).json({ error: "User not authenticated" });
-  }
-
-  const accessToken = req.session.user.accessToken;
-  const auth = new google.auth.OAuth2();
-  auth.setCredentials({ access_token: accessToken });
-
-  const gmail = google.gmail({ version: "v1", auth });
-
-  try {
-    const response = await gmail.users.messages.list({
-      userId: "me",
-      maxResults: 10,
-    });
-
-    const messages = response.data.messages;
-    if (!messages) return res.status(200).json({ emails: [] });
-
-    // Fetch and store emails
-    fetchedEmails = await Promise.all(
-      messages.map(async (message) => {
-        const email = await gmail.users.messages.get({
-          userId: "me",
-          id: message.id,
-        });
-
-        return {
-          id: email.data.id,
-          snippet: email.data.snippet,
-          from:
-            email.data.payload.headers.find(
-              (header) => header.name === "From"
-            )?.value || "Unknown",
-          subject:
-            email.data.payload.headers.find(
-              (header) => header.name === "Subject"
-            )?.value || "No Subject",
-        };
-      })
-    );
-
-    res.json({ emails: fetchedEmails }); // Send response
-  } catch (error) {
-    console.error("Error fetching emails:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ✅ New Route to Serve Stored Emails
-app.get("/get-emails", (req, res) => {
-  if (!fetchedEmails.length) {
-    return res.status(404).json({ error: "No emails fetched yet" });
-  }
-
-  res.json({ emails: fetchedEmails });
-});
-
-
-// ✅ Debug Route: Check Session Data
+// Debug Session Route
 app.get("/debug-session", (req, res) => {
-  res.json({ user: req.session.user || null });
+  res.json({ session: req.session }); // Return the entire session for debugging
 });
 
-// ✅ Logout Route
+// Logout Route
 app.get("/logout", (req, res) => {
-  req.session.destroy(() => {
-    res.json({ message: "Logged out successfully" });
+  req.session.destroy((err) => {
+    // Destroy the session
+    if (err) {
+      console.error("Error during logout:", err);
+      return res.status(500).json({ message: "Logout failed" });
+    }
+    //Redirect to login page on successfull logout
+    res.status(200).json({ message: "Log out!" });
   });
 });
 
-// ✅ Import additional routes
+// Use your other routes
 app.use(Router);
 
-// ✅ Start Server
+// Start the Server
 app.listen(port, () => console.log(`🚀 Server running on PORT: ${port}`));
