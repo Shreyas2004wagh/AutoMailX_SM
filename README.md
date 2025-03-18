@@ -22,6 +22,13 @@ This allows users to stay organized, save time, and focus on what matters most.
 
 ---
 
+## **Tech Stack Used**  
+🔹 **Backend:** Node.js, Express.js, Passport.js (Google Authentication)  
+🔹 **Frontend:** React, Tailwind CSS  
+🔹 **Database:** MongoDB  
+
+---
+
 ## **Key Features**  
 ✔ **Smart Inbox:** Automatically organizes emails based on priority  
 ✔ **Priority Emails:** Identifies and highlights important messages  
@@ -41,13 +48,6 @@ This allows users to stay organized, save time, and focus on what matters most.
 - 🏷 **Classification**  
 - ✍ **Generation**  
 - 🔍 **Extraction**  
-
----
-
-## **Tech Stack Used**  
-🔹 **Backend:** Node.js, Express.js, Passport.js (Google Authentication)  
-🔹 **Frontend:** React, Tailwind CSS  
-🔹 **Database:** MongoDB  
 
 ---
 
