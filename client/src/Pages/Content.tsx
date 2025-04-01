@@ -116,7 +116,7 @@ function Content() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ emailContent: selectedEmail.content }),
+        body: JSON.stringify({ content: selectedEmail.content }),  //Passing
       });
 
       if (!response.ok) {
@@ -128,8 +128,8 @@ function Content() {
       }
 
       const data = await response.json();
-      setResponse(data.response);
-      setEditableResponse(data.response); // Initialize editableResponse
+      setResponse(data.response || "Gemini API did not return response, retry or check the email again.");  //Add Default value incase fails, prevents NULL return
+      setEditableResponse(data.response || "");
     } catch (error) {
       console.error("Error generating response:", error);
       setResponse("Failed to generate response.");
@@ -144,7 +144,8 @@ function Content() {
     setResponseSaving(true);
 
     try {
-      const saveResponse = await fetch("https://automailx-sm.onrender.com/save-response", {
+      const saveResponse = await fetch("http://localhost:5000/save-response", {  //Re-write url or your cloud/docker URL on Server side .
+
         method: "POST",
         headers: {
           "Content-Type": "application/json",
