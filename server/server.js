@@ -7,6 +7,10 @@ const passport = require("passport");
 const { google } = require("googleapis");
 const Router = require("./routes.js"); // Import your existing routes
 require("./auth"); // Import Google OAuth strategy
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY; // Ensure you have this in .env
+const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro-exp-03-25:generateContent?key=${GEMINI_API_KEY}`;
+
+main
 const axios = require("axios");
 const Email = require("./models/Email.js");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
@@ -41,10 +45,33 @@ app.use(cors(corsOptions));
 mongoose
   .connect(process.env.DATABASE_URI) // No need for the deprecated options
   .then(() => console.log("✅ Connected to MongoDB"))
+  .catch((err) => console.error("❌ MongoDB connection error:", err));
+
+// ✅ Dummy User Database (replace with a real database in production)
+const users = [
+  { username: "testuser", password: "password123" }, // Example user
+];
+
+app.use(
+  cors({
+    origin: [
+      "http://localhost:3000",
+      "http://localhost:5173",
+      "http://localhost:5174",
+      "http://localhost:5174/content",
+      "https://project-murex-seven.vercel.app/",
+      "https://project-murex-seven.vercel.app/content"
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
+  })
+);
+
   .catch((err) => {
     console.error("❌ MongoDB connection error:", err);
     process.exit(1); // Exit the process on a fatal error
   });
+
 
 // Middleware
 app.use(express.json());
@@ -112,7 +139,7 @@ Category:`;
 // Summarization Route
 async function getSummary(text) {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro-exp-03-25" }); // ✅ Correct Model
     const prompt = `Please provide a concise summary of the following text:\n\n${text}`;
     const result = await model.generateContent(prompt);
     const response = await result.response;
@@ -129,6 +156,23 @@ app.post("/summarize", async (req, res) => {
     if (!emailContent) {
       return res.status(400).json({ message: "Email content is required" });
     }
+
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro-exp-03-25" });
+
+    const prompt = `Please provide a concise summary of the following text:\n\n${emailContent}`;
+    const result = await model.generateContent(prompt);
+    const responseText = await result.response.text();
+
+    res.json({ summary: responseText });
+  } catch (error) {
+    console.error("Error generating summary:", error);
+    res.status(500).json({ message: "Error summarizing email" });
+  }
+});
+
+
+// Add this new route
+
     const summary = await getSummary(emailContent);
     res.status(200).json({ summary }); // Use consistent status codes
   } catch (error) {
@@ -140,12 +184,41 @@ app.post("/summarize", async (req, res) => {
 });
 
 // Response Generation Route
+
 app.post("/generate-response", async (req, res) => {
   try {
+    console.log("📩 Incoming Request Body:", req.body);
+
     const { emailContent } = req.body;
     if (!emailContent) {
+      console.log("🚨 Missing email content in request.");
       return res.status(400).json({ message: "Email content is required" });
     }
+
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro-exp-03-25" });
+
+    const prompt = `Given the following email, generate a single email response:\n\n${emailContent}`;
+    console.log("🔹 Sending Prompt to Gemini:", prompt);
+
+    const result = await model.generateContent(prompt);
+    console.log("✅ Gemini API Response:", result);
+
+    const responseText = result.response?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    if (!responseText) {
+      console.log("🚨 Gemini API returned an empty response.");
+      return res.status(500).json({ message: "No response generated" });
+    }
+
+    res.json({ response: responseText });
+
+  } catch (error) {
+    console.error("🚨 API Call Failed:", error.response?.data || error.message);
+    res.status(500).json({ message: "Error generating response", error: error.message });
+  }
+});
+
+
+// --- Modified /get-emails Route ---
 
     const model = genAI.getGenerativeModel({ model: "gemini-pro" });
     const prompt = `Given the following email, please generate a suitable response:\n\n${emailContent}\n\nResponse:`;
@@ -175,6 +248,7 @@ app.post("/save-response", async (req, res) => {
       { aiSummary: response },
       { new: true }
     );
+    
 
     if (!updateEmail) {
       return res.status(404).json({ message: "Email not found" });
