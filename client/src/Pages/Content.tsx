@@ -107,8 +107,8 @@ function Content() {
 
     setResponseLoading(true);
     setResponse(null);
-    setResponseSaved(false); // Reset save status
-    setIsEditing(false); // Exit edit mode if active
+    setResponseSaved(false);
+    setIsEditing(false);
 
     try {
       const response = await fetch("http://localhost:5000/generate-response", {
@@ -116,20 +116,19 @@ function Content() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ content: selectedEmail.content }),  //Passing
+        body: JSON.stringify({ content: selectedEmail.content }), // Make sure this matches
       });
 
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(
-          `Failed to generate response: ${response.status} - ${errorData.message || "Unknown Error"
-          }`
+          `Failed to generate response: ${response.status} - ${errorData.message || "Unknown Error"}`
         );
       }
 
       const data = await response.json();
-      setResponse(data.response || "Gemini API did not return response, retry or check the email again.");  //Add Default value incase fails, prevents NULL return
-      setEditableResponse(data.response || "");
+      setResponse(data.response);
+      setEditableResponse(data.response);
     } catch (error) {
       console.error("Error generating response:", error);
       setResponse("Failed to generate response.");

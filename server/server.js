@@ -167,21 +167,21 @@ app.post("/generate-response", async (req, res) => {
   try {
     console.log("📩 Incoming Request Body:", req.body);
 
-    const { content: emailText } = req.body;
-    if (!emailContent) {
+    const { content } = req.body; // Changed from content: emailText
+    if (!content) { // Changed from emailContent
       console.log("🚨 Missing email content in request.");
       return res.status(400).json({ message: "Email content is required" });
     }
 
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro-exp-03-25" });
 
-    const prompt = `Given the following email, generate a single email response:\n\n${emailContent}`;
+    const prompt = `Given the following email, generate a professional and concise email response that addresses the main points:\n\n${content}`; // Changed from emailContent
     console.log("🔹 Sending Prompt to Gemini:", prompt);
 
     const result = await model.generateContent(prompt);
-    console.log("✅ Gemini API Response:", result);
+    const response = await result.response;
+    const responseText = response.text();
 
-    const responseText = result.response?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
     if (!responseText) {
       console.log("🚨 Gemini API returned an empty response.");
       return res.status(500).json({ message: "No response generated" });
