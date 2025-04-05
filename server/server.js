@@ -175,7 +175,7 @@ app.post("/generate-response", async (req, res) => {
 
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro-exp-03-25" });
 
-    const prompt = `Given the following email, generate a professional and concise email response that addresses the main points:\n\n${content}`; // Changed from emailContent
+    const prompt = `Given the following email, generate a professional and concise single email response that addresses the main points:\n\n${content}`; // Changed from emailContent
     console.log("🔹 Sending Prompt to Gemini:", prompt);
 
     const result = await model.generateContent(prompt);
