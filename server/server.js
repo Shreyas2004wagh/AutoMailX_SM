@@ -8,7 +8,7 @@ const { google } = require("googleapis");
 const Router = require("./routes.js"); // Your existing routes
 require("./auth"); // Import Google OAuth strategy
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY; // Ensure you have this in .env
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro-exp-03-25:generateContent?key=${GEMINI_API_KEY}`;
 const axios = require("axios");
 const Email = require("./models/Email.js");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
@@ -38,6 +38,8 @@ app.use(
     origin: [
       "http://localhost:3000",
       "http://localhost:5173",
+      "http://localhost:5174",
+      "http://localhost:5174/content",
       "https://project-murex-seven.vercel.app/",
       "https://project-murex-seven.vercel.app/content"
     ],
@@ -127,11 +129,10 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 async function getSummary(text) {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro-exp-03-25" }); // ✅ Correct Model
     const prompt = `Please provide a concise summary of the following text:\n\n${text}`;
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    console.log("Gemini Response:", response); // Debugging
     return response.text();
   } catch (error) {
     console.error("Error generating summary:", error);
@@ -146,36 +147,54 @@ app.post("/summarize", async (req, res) => {
     if (!emailContent) {
       return res.status(400).json({ message: "Email content is required" });
     }
-    const summary = await getSummary(emailContent);
-    res.json({ summary });
+
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro-exp-03-25" });
+
+    const prompt = `Please provide a concise summary of the following text:\n\n${emailContent}`;
+    const result = await model.generateContent(prompt);
+    const responseText = await result.response.text();
+
+    res.json({ summary: responseText });
   } catch (error) {
-    res.status(500).json({ message: "Error summarizing email"});
-}
+    console.error("Error generating summary:", error);
+    res.status(500).json({ message: "Error summarizing email" });
+  }
 });
+
 
 // Add this new route
 app.post("/generate-response", async (req, res) => {
   try {
+    console.log("📩 Incoming Request Body:", req.body);
+
     const { emailContent } = req.body;
     if (!emailContent) {
+      console.log("🚨 Missing email content in request.");
       return res.status(400).json({ message: "Email content is required" });
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro-exp-03-25" });
 
-    const prompt = `Given the following email, please generate a suitable response:\n\n${emailContent}\n\nResponse:`;
+    const prompt = `Given the following email, generate a single email response:\n\n${emailContent}`;
+    console.log("🔹 Sending Prompt to Gemini:", prompt);
 
     const result = await model.generateContent(prompt);
-    const responseText = await result.response.text(); // Important: get .text()
+    console.log("✅ Gemini API Response:", result);
 
-    res.json({ response: responseText }); // Send back the response text
+    const responseText = result.response?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    if (!responseText) {
+      console.log("🚨 Gemini API returned an empty response.");
+      return res.status(500).json({ message: "No response generated" });
+    }
+
+    res.json({ response: responseText });
+
   } catch (error) {
-    console.error("Error generating response:", error);
-    res
-      .status(500)
-      .json({ message: "Error generating response", error: error.message });
+    console.error("🚨 API Call Failed:", error.response?.data || error.message);
+    res.status(500).json({ message: "Error generating response", error: error.message });
   }
 });
+
 
 // --- Modified /get-emails Route ---
 
