@@ -143,10 +143,6 @@ You're all set to use **AutoMailX** locally! 🚀
 
 ---
 
-## 🎥 **Video Demonstration**  
-📹 [Loom Video](https://www.loom.com/share/34f7cad2331840058c5ae9b4cddbf28b?sid=614353db-1622-49da-b70c-f6824a4f7c11)  
-
----
 
 ## 📊 **Presentation**  
 📜 [AutoMailX PPT](https://www.canva.com/design/DAGd1j2EOzM/tZTvvkK-hNV-gnq49clbrw/edit?utm_content=DAGd1j2EOzM&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton)  
