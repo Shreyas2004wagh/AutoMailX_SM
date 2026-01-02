@@ -5,25 +5,19 @@ import { useNavigate } from 'react-router-dom';
 function LandingPage() {
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
-  const navigate = useNavigate();
+   const navigate = useNavigate();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
     setEmail('');
   };
-
-  const handleGetStartedClick = () => {
-    navigate('/content'); //  Good - keeps the existing navigation.
+    const handleGetStartedClick = () => {
+    navigate('/content');
   };
-
-  const handleWatchDemoClick = () => {
-    window.open("https://www.loom.com/share/34f7cad2331840058c5ae9b4cddbf28b?sid=a8f525d3-8e4b-47ec-9a7b-896bad5e9efa", "_blank");
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-gray-900 to-black text-white">
-      {/* ... (rest of the component - unchanged) ... */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="animate-pulse-slow absolute -inset-[10px] opacity-50 bg-gradient-to-br from-purple-600/20 via-transparent to-transparent blur-3xl" />
         <div className="animate-pulse-slower absolute -inset-[10px] opacity-30 bg-gradient-to-tr from-purple-800/20 via-transparent to-transparent blur-3xl" />
@@ -76,10 +70,7 @@ function LandingPage() {
               <button className="bg-purple-600 hover:bg-purple-500 transition-colors px-8 py-3 rounded-full font-medium text-lg w-full sm:w-auto" onClick={handleGetStartedClick}>
                 Get Started
               </button>
-              <button
-                className="border border-purple-600 hover:border-purple-500 transition-colors px-8 py-3 rounded-full font-medium text-lg w-full sm:w-auto"
-                onClick={handleWatchDemoClick} // Use the new handler here
-              >
+              <button className="border border-purple-600 hover:border-purple-500 transition-colors px-8 py-3 rounded-full font-medium text-lg w-full sm:w-auto">
                 Watch Demo
               </button>
             </div>
@@ -158,10 +149,11 @@ function LandingPage() {
               ].map((plan, index) => (
                 <div
                   key={index}
-                  className={`p-6 sm:p-8 rounded-2xl backdrop-blur-sm border transition-all ${plan.highlighted
+                  className={`p-6 sm:p-8 rounded-2xl backdrop-blur-sm border transition-all ${
+                    plan.highlighted
                       ? 'border-purple-500 bg-purple-900/20'
                       : 'border-purple-800/30 hover:border-purple-600/50'
-                    }`}
+                  }`}
                 >
                   <h3 className="text-xl sm:text-2xl font-bold mb-2">{plan.name}</h3>
                   <div className="text-2xl sm:text-3xl font-bold mb-4">{plan.price}</div>
@@ -175,10 +167,11 @@ function LandingPage() {
                     ))}
                   </ul>
                   <button
-                    className={`w-full py-3 rounded-full font-medium ${plan.highlighted
+                    className={`w-full py-3 rounded-full font-medium ${
+                      plan.highlighted
                         ? 'bg-purple-600 hover:bg-purple-500'
                         : 'border border-purple-600 hover:border-purple-500'
-                      } transition-colors`}
+                    } transition-colors`}
                   >
                     Get Started
                   </button>
