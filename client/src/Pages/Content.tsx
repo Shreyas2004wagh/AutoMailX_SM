@@ -1,4 +1,4 @@
-  import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
   import {
     Inbox,
     AlertTriangle,
@@ -53,7 +53,7 @@
       setSummary(null);
 
       try {
-        const response = await fetch("https://automailx-sm-52mt.onrender.com/summarize", {
+        const response = await fetch("https://automailx-sm.onrender.com/summarize", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -80,7 +80,7 @@
     };
 
     useEffect(() => {
-      fetch("https://automailx-sm-52mt.onrender.com/get-emails", {
+      fetch("https://automailx-sm.onrender.com/get-emails", {
         method: "GET",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -111,7 +111,7 @@
       setIsEditing(false); // Exit edit mode if active
 
       try {
-        const response = await fetch("https://automailx-sm-52mt.onrender.com/generate-response", {
+        const response = await fetch("https://automailx-sm.onrender.com/generate-response", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -144,7 +144,7 @@
       setResponseSaving(true);
 
       try {
-        const saveResponse = await fetch("https://automailx-sm-52mt.onrender.com/save-response", {
+        const saveResponse = await fetch("https://automailx-sm.onrender.com/save-response", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

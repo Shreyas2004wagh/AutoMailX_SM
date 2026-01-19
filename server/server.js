@@ -35,7 +35,7 @@ app.use(
       "http://localhost:5174",
       "http://localhost:5174/content",
       "https://automailx.vercel.app",
-      "https://automailx-sm-52mt.onrender.com/get-emails"
+      "https://automailx-sm.onrender.com/get-emails"
     ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,

@@ -139,7 +139,7 @@ You're all set to use **AutoMailX** locally! 🚀
 
 ## 🌍 **Live Application**  
 - **Frontend:** [AutoMailX Frontend](https://automailx.vercel.app/)  
-- **Backend:** [AutoMailX Backend](https://automailx-sm-52mt.onrender.com/)  
+- **Backend:** [AutoMailX Backend](https://automailx-sm.onrender.com/)
 
 ---
 
