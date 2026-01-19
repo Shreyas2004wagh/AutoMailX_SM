@@ -6,11 +6,6 @@ const session = require("express-session");
 const passport = require("passport");
 const { google } = require("googleapis");
 
-const Router = require("./routes.js");
-require("./auth");
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${GEMINI_API_KEY}`;
-
 const Router = require("./routes.js"); // Your existing routes
 require("./auth"); // Import Google OAuth strategy
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY; // Ensure you have this in .env
@@ -116,9 +111,6 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 async function getSummary(text) {
   try {
-
-    const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
-
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-04-17" }); // ✅ Correct Model
 
     const prompt = `Please provide a concise summary of the following text:\n\n${text}`;
@@ -138,11 +130,7 @@ app.post("/summarize", async (req, res) => {
       return res.status(400).json({ message: "Email content is required" });
     }
 
-
-    const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
-
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-04-17" });
-
 
     const prompt = `Please provide a concise summary of the following text:\n\n${emailContent}`;
     const result = await model.generateContent(prompt);
@@ -164,9 +152,6 @@ app.post("/generate-response", async (req, res) => {
       console.log("🚨 Missing email content in request.");
       return res.status(400).json({ message: "Email content is required" });
     }
-
-
-    const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
 
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-04-17" });
 
