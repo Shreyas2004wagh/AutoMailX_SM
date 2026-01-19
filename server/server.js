@@ -9,7 +9,43 @@ const { google } = require("googleapis");
 const Router = require("./routes.js"); // Your existing routes
 require("./auth"); // Import Google OAuth strategy
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY; // Ensure you have this in .env
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-04-17:generateContent?key=${GEMINI_API_KEY}`;
+// Gemini model resolution:
+// - Prefer explicit env var GEMINI_MODEL
+// - Otherwise call ListModels and pick the first that supports generateContent
+let GEMINI_MODEL = process.env.GEMINI_MODEL || "";
+
+function geminiApiUrlForModel(model) {
+  return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+}
+
+async function resolveGeminiModel() {
+  if (GEMINI_MODEL) return GEMINI_MODEL;
+  if (!GEMINI_API_KEY) {
+    throw new Error("GEMINI_API_KEY is not configured");
+  }
+
+  // ListModels: https://generativelanguage.googleapis.com/v1beta/models?key=...
+  const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`;
+  const resp = await axios.get(url);
+  const models = resp.data?.models || [];
+
+  const candidate = models.find((m) =>
+    Array.isArray(m.supportedGenerationMethods) &&
+    m.supportedGenerationMethods.includes("generateContent")
+  );
+
+  const name = candidate?.name || "";
+  if (!name) {
+    throw new Error(
+      "No Gemini models available that support generateContent for this API key. Check key/project access."
+    );
+  }
+
+  // API returns names like "models/gemini-1.5-flash"
+  GEMINI_MODEL = name.startsWith("models/") ? name.slice("models/".length) : name;
+  console.log("✅ Resolved Gemini model:", GEMINI_MODEL);
+  return GEMINI_MODEL;
+}
 
 const axios = require("axios");
 const Email = require("./models/Email.js");
@@ -22,10 +58,6 @@ mongoose
   .connect(process.env.DATABASE_URI)
   .then(() => console.log("✅ Connected to MongoDB"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
-
-const users = [
-  { username: "testuser", password: "password123" },
-];
 
 app.use(
   cors({
@@ -75,6 +107,7 @@ app.get("/", (req, res) => {
 
 const classifyEmailWithGemini = async (emailContent) => {
   try {
+    const model = await resolveGeminiModel();
     const prompt = `You are an email classification expert. Analyze the following email and determine its primary category. Return ONLY ONE of the following categories: urgent, positive, neutral, calendar.
 
     * urgent: High-priority issues, security alerts, requiring immediate action.
@@ -87,7 +120,7 @@ const classifyEmailWithGemini = async (emailContent) => {
 
     Category:`;
 
-    const response = await axios.post(GEMINI_API_URL, {
+    const response = await axios.post(geminiApiUrlForModel(model), {
       contents: [{ parts: [{ text: prompt }] }],
     });
 
@@ -111,7 +144,8 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 async function getSummary(text) {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-04-17" }); // ✅ Correct Model
+    const modelName = await resolveGeminiModel();
+    const model = genAI.getGenerativeModel({ model: modelName });
 
     const prompt = `Please provide a concise summary of the following text:\n\n${text}`;
     const result = await model.generateContent(prompt);
@@ -126,20 +160,34 @@ async function getSummary(text) {
 app.post("/summarize", async (req, res) => {
   try {
     const { emailContent } = req.body;
-    if (!emailContent) {
-      return res.status(400).json({ message: "Email content is required" });
+    
+    if (!emailContent || typeof emailContent !== 'string' || emailContent.trim().length === 0) {
+      console.error("Invalid email content received:", { emailContent, type: typeof emailContent });
+      return res.status(400).json({ message: "Email content is required and must be a non-empty string" });
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-04-17" });
+    await resolveGeminiModel();
 
-    const prompt = `Please provide a concise summary of the following text:\n\n${emailContent}`;
+    console.log("📝 Summarizing email content, length:", emailContent.length);
+    
+    const modelName = await resolveGeminiModel();
+    const model = genAI.getGenerativeModel({ model: modelName });
+
+    const prompt = `Please provide a concise summary of the following text:\n\n${emailContent.trim()}`;
     const result = await model.generateContent(prompt);
     const responseText = await result.response.text();
 
-    res.json({ summary: responseText });
+    if (!responseText || responseText.trim().length === 0) {
+      console.error("Empty response from Gemini API");
+      return res.status(500).json({ message: "Received empty response from AI service" });
+    }
+
+    console.log("✅ Summary generated successfully, length:", responseText.length);
+    res.json({ summary: responseText.trim() });
   } catch (error) {
-    console.error("Error generating summary:", error);
-    res.status(500).json({ message: "Error summarizing email" });
+    console.error("❌ Error generating summary:", error);
+    const errorMessage = error.message || "Unknown error occurred";
+    res.status(500).json({ message: `Error summarizing email: ${errorMessage}` });
   }
 });
 
@@ -153,7 +201,8 @@ app.post("/generate-response", async (req, res) => {
       return res.status(400).json({ message: "Email content is required" });
     }
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-04-17" });
+    const modelName = await resolveGeminiModel();
+    const model = genAI.getGenerativeModel({ model: modelName });
 
     const prompt = `Given the following email, generate a single email response:\n\n${emailContent}`;
     console.log("🔹 Sending Prompt to Gemini:", prompt);
@@ -221,19 +270,30 @@ app.get("/get-emails", async (req, res) => {
 
     const classifiedEmails = await Promise.all(
       emails.map(async (email) => {
+        // Map emailId to id for frontend compatibility and ensure content exists
+        const mappedEmail = {
+          ...email,
+          id: email.emailId || email._id.toString(),
+          content: email.content || "",
+        };
+
         if (email.category) {
-          return email;
+          return mappedEmail;
         }
 
-        const combinedContent = `${email.subject} ${email.content}`;
-        const category = await classifyEmailWithGemini(combinedContent);
+        const combinedContent = `${email.subject || ""} ${email.content || ""}`;
+        if (combinedContent.trim().length > 0) {
+          const category = await classifyEmailWithGemini(combinedContent);
 
-        await Email.updateOne(
-          { _id: email._id },
-          { $set: { category: category } }
-        );
+          await Email.updateOne(
+            { _id: email._id },
+            { $set: { category: category } }
+          );
 
-        return { ...email, category };
+          return { ...mappedEmail, category };
+        }
+
+        return { ...mappedEmail, category: "neutral" };
       })
     );
 
@@ -282,21 +342,6 @@ async function getEmailContent(gmail, emailId) {
     };
   }
 }
-
-app.post("/login", (req, res) => {
-  const { username, password } = req.body;
-
-  const user = users.find(
-    (u) => u.username === username && u.password === password
-  );
-
-  if (!user) {
-    return res.status(401).json({ error: "Invalid credentials" });
-  }
-
-  req.session.user = { username: user.username };
-  res.json({ message: "Login successful", user: req.session.user });
-});
 
 app.get(
   "/auth/google",

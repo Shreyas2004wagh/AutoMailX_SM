@@ -14,7 +14,7 @@ export function Login() {
     e.preventDefault();
     setError('');
     try {
-      const response = await fetch('https://automailx-sm.onrender.com/login', {
+      const response = await fetch('http://localhost:5000/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -28,7 +28,7 @@ export function Login() {
       }
 
       localStorage.setItem('token', data.token);
-      navigate('/dashboard'); // Redirect after login
+      navigate('/content'); // Redirect after login
     } catch (err) {
       setError((err as Error).message);
     }

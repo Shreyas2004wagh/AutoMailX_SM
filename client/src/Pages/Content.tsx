@@ -49,38 +49,54 @@ import { useState, useEffect } from "react";
     const navigate = useNavigate();
 
     const fetchAndSummarize = async (emailContent: string) => {
+      if (!emailContent || emailContent.trim().length === 0) {
+        console.error("Email content is empty or undefined");
+        setSummary("No email content available to summarize.");
+        return;
+      }
+
       setSummaryLoading(true);
       setSummary(null);
 
       try {
-        const response = await fetch("https://automailx-sm.onrender.com/summarize", {
+        const response = await fetch("http://localhost:5000/summarize", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ emailContent }),
+          body: JSON.stringify({ emailContent: emailContent.trim() }),
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(
-            `Failed to summarize: ${response.status} - ${errorData.message || "Unknown Error"
-            }`
-          );
+          let errorMessage = "Unknown Error";
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.message || `HTTP ${response.status}`;
+          } catch (e) {
+            errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+          }
+          console.error("Summary API error:", errorMessage);
+          throw new Error(errorMessage);
         }
 
         const data = await response.json();
-        setSummary(data.summary);
+        if (data.summary && data.summary.trim().length > 0) {
+          setSummary(data.summary);
+        } else {
+          console.error("Empty summary received from API");
+          setSummary("Unable to generate summary. Please try again.");
+        }
       } catch (error) {
         console.error("Error summarizing email:", error);
-        setSummary("Failed to generate summary.");
+        const errorMessage = error instanceof Error ? error.message : "Network error occurred";
+        setSummary(`Failed to generate summary: ${errorMessage}`);
       } finally {
         setSummaryLoading(false);
       }
     };
 
     useEffect(() => {
-      fetch("https://automailx-sm.onrender.com/get-emails", {
+      fetch("http://localhost:5000/get-emails", {
         method: "GET",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -111,7 +127,7 @@ import { useState, useEffect } from "react";
       setIsEditing(false); // Exit edit mode if active
 
       try {
-        const response = await fetch("https://automailx-sm.onrender.com/generate-response", {
+        const response = await fetch("http://localhost:5000/generate-response", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -144,7 +160,7 @@ import { useState, useEffect } from "react";
       setResponseSaving(true);
 
       try {
-        const saveResponse = await fetch("https://automailx-sm.onrender.com/save-response", {
+        const saveResponse = await fetch("http://localhost:5000/save-response", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -322,7 +338,12 @@ import { useState, useEffect } from "react";
                       }`}
                     onClick={() => {
                       setSelectedEmail(email);
-                      fetchAndSummarize(email.content);
+                      if (email.content && email.content.trim().length > 0) {
+                        fetchAndSummarize(email.content);
+                      } else {
+                        console.warn("Email content is empty for email:", email.id);
+                        setSummary("No content available for this email.");
+                      }
                       setResponse(null); // Clear previous response
                       setResponseSaved(false); // Clear saved status
                       if (window.innerWidth < 768) setIsEmailListOpen(false);
