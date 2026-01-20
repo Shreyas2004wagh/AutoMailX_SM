@@ -8,6 +8,7 @@ const { google } = require("googleapis");
 
 const Router = require("./routes.js"); // Your existing routes
 require("./auth"); // Import Google OAuth strategy
+const jwt = require("jsonwebtoken");
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY; // Ensure you have this in .env
 // Gemini model resolution:
 // - Prefer explicit env var GEMINI_MODEL
@@ -58,6 +59,9 @@ mongoose
   .connect(process.env.DATABASE_URI)
   .then(() => console.log("✅ Connected to MongoDB"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
+
+// Trust proxy for Render (important for HTTPS detection)
+app.set('trust proxy', 1);
 
 app.use(
   cors({
@@ -357,13 +361,23 @@ app.get(
     console.log("✅ User Authenticated:", req.user);
 
     req.session.user = {
-      id: req.user.id,
+      id: req.user.profile.id,
       accessToken: req.user.accessToken,
       refreshToken: req.user.refreshToken,
-      email: req.user.email,
+      email: req.user.profile.emails[0].value,
+      name: req.user.profile.displayName,
     };
 
-    res.redirect("http://localhost:5000/dashboard");
+    // Generate JWT token for frontend
+    const token = jwt.sign(
+      { id: req.user.profile.id, email: req.user.profile.emails[0].value },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    // Redirect to frontend with token
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    res.redirect(`${frontendUrl}/content?token=${token}`);
   }
 );
 
