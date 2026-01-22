@@ -13,7 +13,6 @@
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
     "axios": "^1.8.4",
-    "bcrypt": "^5.1.1",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
@@ -25,7 +24,6 @@
     "node-cron": "^3.0.3",
     "nodemon": "^3.1.9",
     "passport": "^0.7.0",
-    "passport-google-oauth20": "^2.0.0",
-    "react-router-dom": "^7.5.0"
+    "passport-google-oauth20": "^2.0.0"
   }
 }
