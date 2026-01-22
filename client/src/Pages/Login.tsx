@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from "../config";
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthLayout } from '../Components/AuthLayout';
 
@@ -24,7 +25,7 @@ export function Login() {
     e.preventDefault();
     setError('');
     try {
-      const response = await fetch('https://automailx-sm.onrender.com/login', {
+      const response = await fetch(`${API_BASE_URL}/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -129,7 +130,7 @@ export function Login() {
         </div>
 
         <a
-          href="https://automailx-sm.onrender.com/auth/google"
+          href={`${API_BASE_URL}/auth/google`}
           className="w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 transition-colors px-8 py-3 rounded-lg font-medium"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">

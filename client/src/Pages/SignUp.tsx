@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from "../config";
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthLayout } from '../Components/AuthLayout'; // Assuming this provides the themed background/layout
 import { motion } from 'framer-motion'; // Import motion
@@ -24,7 +25,7 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
 }
 */
 
-const SignUp=()=> {
+const SignUp = () => {
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -54,13 +55,13 @@ const SignUp=()=> {
       return;
     }
     if (formData.password.length < 6) { // Basic validation example
-        setError('Password must be at least 6 characters long.');
-        return;
+      setError('Password must be at least 6 characters long.');
+      return;
     }
 
     try {
       setLoading(true);
-      const response = await fetch('https://automailx-sm.onrender.com/signup', {
+      const response = await fetch(`${API_BASE_URL}/signup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -86,9 +87,9 @@ const SignUp=()=> {
       console.log("Signup successful:", data);
       navigate('/login'); // Redirect to login on success
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
-       console.error("Signup Error:", err); // Log the actual error
+      console.error("Signup Error:", err); // Log the actual error
       // Provide user-friendly messages
       if (err.message.includes('already exists')) {
         setError('An account with this email or username already exists.');
@@ -110,24 +111,24 @@ const SignUp=()=> {
   };
 
   const cardVariants = {
-      hidden: { opacity: 0, y: 30, scale: 0.95 },
-      visible: {
-          opacity: 1,
-          y: 0,
-          scale: 1,
-          transition: { duration: 0.5, ease: [0.43, 0.13, 0.23, 0.96] }
-      }
+    hidden: { opacity: 0, y: 30, scale: 0.95 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: { duration: 0.5, ease: [0.43, 0.13, 0.23, 0.96] }
+    }
   };
 
 
   return (
     <AuthLayout>
-       <motion.div
+      <motion.div
         variants={cardVariants}
         initial="hidden"
         animate="visible"
         className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl border border-gray-200/70 p-8 md:p-10 w-full" // Updated card style
-       >
+      >
         <h2 className="text-2xl md:text-3xl font-bold text-center mb-8">
           <span className="bg-gradient-to-r from-cyan-500 to-purple-600 bg-clip-text text-transparent">
             Join AetherMail
@@ -135,15 +136,15 @@ const SignUp=()=> {
         </h2>
 
         {error && (
-            <motion.p
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-              className="text-red-600 bg-red-100 border border-red-300 rounded-md text-sm p-3 text-center mb-6"
-              role="alert" // Added for accessibility
-            >
-              {error}
-            </motion.p>
+          <motion.p
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="text-red-600 bg-red-100 border border-red-300 rounded-md text-sm p-3 text-center mb-6"
+            role="alert" // Added for accessibility
+          >
+            {error}
+          </motion.p>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -247,7 +248,7 @@ const SignUp=()=> {
         </div>
 
         <motion.a
-          href="https://automailx-sm.onrender.com/auth/google"
+          href={`${API_BASE_URL}/auth/google`}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           className="w-full flex items-center justify-center gap-3 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 transition-colors px-8 py-3 rounded-lg font-semibold shadow-sm"
