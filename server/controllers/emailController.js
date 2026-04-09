@@ -1,14 +1,11 @@
 const { google } = require("googleapis");
 const Email = require("../models/Email.js");
 const {
-    resolveGeminiModel,
     classifyEmailWithGemini,
+    getSummary,
     generateResponse,
 } = require("../services/geminiService.js");
 const { getEmailContent } = require("../services/gmailService.js");
-const { GoogleGenerativeAI } = require("@google/generative-ai");
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // GET /emails - Fetch emails from Gmail and store in DB
 const getEmails = async (req, res) => {
@@ -47,8 +44,8 @@ const getEmails = async (req, res) => {
 
         return res.json({ emails: fetchedEmails });
     } catch (error) {
-        console.error("❌ Error fetching emails:", error);
-        res.status(500).json({ error: error.message });
+        console.error("Error fetching emails:", error);
+        return res.status(500).json({ error: error.message });
     }
 };
 
@@ -75,7 +72,7 @@ const getEmailsFromDB = async (req, res) => {
 
                     await Email.updateOne(
                         { _id: email._id },
-                        { $set: { category: category } }
+                        { $set: { category } }
                     );
 
                     return { ...mappedEmail, category };
@@ -85,10 +82,10 @@ const getEmailsFromDB = async (req, res) => {
             })
         );
 
-        res.json({ emails: classifiedEmails });
+        return res.json({ emails: classifiedEmails });
     } catch (error) {
         console.error("Error fetching and classifying emails:", error);
-        res.status(500).json({ error: "Failed to fetch and classify emails." });
+        return res.status(500).json({ error: "Failed to fetch and classify emails." });
     }
 };
 
@@ -98,56 +95,62 @@ const summarizeEmail = async (req, res) => {
         const { emailContent } = req.body;
 
         if (!emailContent || typeof emailContent !== "string" || emailContent.trim().length === 0) {
-            console.error("Invalid email content received:", { emailContent, type: typeof emailContent });
-            return res.status(400).json({ message: "Email content is required and must be a non-empty string" });
+            console.error("Invalid email content received:", {
+                emailContent,
+                type: typeof emailContent,
+            });
+            return res.status(400).json({
+                message: "Email content is required and must be a non-empty string",
+            });
         }
 
-        await resolveGeminiModel();
+        console.log("Summarizing email content, length:", emailContent.length);
+        const summaryText = await getSummary(emailContent.trim());
 
-        console.log("📝 Summarizing email content, length:", emailContent.length);
-
-        const modelName = await resolveGeminiModel();
-        const model = genAI.getGenerativeModel({ model: modelName });
-
-        const prompt = `Please provide a concise summary of the following text:\n\n${emailContent.trim()}`;
-        const result = await model.generateContent(prompt);
-        const responseText = await result.response.text();
-
-        if (!responseText || responseText.trim().length === 0) {
-            console.error("Empty response from Gemini API");
-            return res.status(500).json({ message: "Received empty response from AI service" });
+        if (!summaryText || summaryText.trim().length === 0) {
+            return res.status(500).json({
+                message: "Received empty response from AI service",
+            });
         }
 
-        console.log("✅ Summary generated successfully, length:", responseText.length);
-        res.json({ summary: responseText.trim() });
+        if (summaryText === "Error generating summary") {
+            return res.status(503).json({
+                message: "AI service is temporarily unavailable. Please try again.",
+            });
+        }
+
+        console.log("Summary generated successfully, length:", summaryText.length);
+        return res.json({ summary: summaryText.trim() });
     } catch (error) {
-        console.error("❌ Error generating summary:", error);
-        const errorMessage = error.message || "Unknown error occurred";
-        res.status(500).json({ message: `Error summarizing email: ${errorMessage}` });
+        console.error("Error generating summary:", error);
+        return res.status(500).json({
+            message: `Error summarizing email: ${error.message || "Unknown error occurred"}`,
+        });
     }
 };
 
 // POST /generate-response - Generate AI response to email
 const generateEmailResponse = async (req, res) => {
     try {
-        console.log("📩 Incoming Request Body:", req.body);
+        console.log("Incoming request body:", req.body);
 
         const { emailContent } = req.body;
         if (!emailContent) {
-            console.log("🚨 Missing email content in request.");
             return res.status(400).json({ message: "Email content is required" });
         }
 
         const responseText = await generateResponse(emailContent);
         if (!responseText) {
-            console.log("🚨 Gemini API returned an empty response.");
             return res.status(500).json({ message: "No response generated" });
         }
 
-        res.json({ response: responseText });
+        return res.json({ response: responseText });
     } catch (error) {
-        console.error("🚨 API Call Failed:", error.response?.data || error.message);
-        res.status(500).json({ message: "Error generating response", error: error.message });
+        console.error("AI response generation failed:", error.message || error);
+        return res.status(503).json({
+            message: "Error generating response",
+            error: error.message,
+        });
     }
 };
 
