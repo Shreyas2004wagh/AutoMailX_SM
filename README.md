@@ -1,153 +1,217 @@
-# 📩 **AutoMailX**  
+# AutoMailX SM
 
-## **Short Description**  
-AutoMailX is an **AI-powered email management system** that helps users efficiently organize, prioritize, and respond to emails with smart automation features.  
+AutoMailX SM is an AI-assisted email dashboard that connects to Gmail, stores fetched messages in MongoDB, classifies emails by priority or intent, summarizes long messages, and generates editable reply drafts with Gemini.
 
----
+## Features
 
-## **Are You Solving a Real-World Problem?** ✅  
+- Email/password authentication with JWT-based sessions
+- Optional Google OAuth sign-in with Gmail read access
+- Gmail message import into MongoDB
+- AI email classification: urgent, positive, neutral, and calendar
+- AI-generated summaries for selected messages
+- AI-generated response drafts that can be edited, copied, opened in Gmail compose, and saved
+- Searchable and filterable React dashboard
 
-### **Problem**  
-Managing emails can be overwhelming, with important messages often buried under spam or low-priority emails.  
-People spend hours sorting, reading, and replying to emails, which affects productivity.  
-Without an intelligent system to categorize and manage emails effectively, users struggle to maintain an organized inbox.  
+## Tech Stack
 
-### **Solution**  
-AutoMailX leverages **AI** to streamline email management:  
-- ✅ Automatically categorizes emails  
-- ✅ Highlights priority messages  
-- ✅ Provides AI-generated insights and responses  
+**Client**
 
-This allows users to stay organized, save time, and focus on what matters most.  
+- React 18
+- TypeScript
+- Vite
+- Tailwind CSS
+- Framer Motion
+- Lucide React
 
----
+**Server**
 
-## **Tech Stack Used**  
-🔹 **Backend:** Node.js, Express.js, Passport.js (Google Authentication)  
-🔹 **Frontend:** React, Tailwind CSS  
-🔹 **Database:** MongoDB  
+- Node.js
+- Express
+- MongoDB with Mongoose
+- Passport Google OAuth 2.0
+- Google Gmail API
+- Google Gemini API
 
----
+## Project Structure
 
-## **Key Features**  
-✔ **Smart Inbox:** Automatically organizes emails based on priority  
-✔ **Priority Emails:** Identifies and highlights important messages  
-✔ **AI Insights:** Provides smart suggestions and auto-generated responses  
-
----
-
-## **Are You Using PromptRepo?**  
-✅ Yes  
-
-## **PromptRepo Google Sheet Link**  
-[AutoMailX PromptRepo](https://docs.google.com/spreadsheets/d/1fUnhkTqJ5Ve1Q8z9zN_h-J548C88i9sACakdfe-Xfsw/edit?usp=sharing)  
-
----
-
-## **What Kind of AI Model Are You Using?**  
-- 🏷 **Classification**  
-- ✍ **Generation**  
-- 🔍 **Extraction**  
-
----
-
-## **Screenshots**  
-
-| **Dashboard** | **AI Insights** |
-|--------------|---------------|
-| ![Dashboard Screenshot](https://github.com/user-attachments/assets/f91e8d28-1a7c-4e60-87f8-6fb9a93006ac) | ![AI Insights Screenshot](https://github.com/user-attachments/assets/688ced5e-c24a-41ab-add0-fa44e53b0739) |
-
----
-
-## **Team Members**  
-👥 **Tushar Shekhar**  
-👥 **Shreyas Wagh**  
-👥 **Aditya Borhade**  
-👥 **Kshitij Kotecha**  
-👥 **Pranjal Gosavi**  
-
----
-
-## 🚀 **How to Run AutoMailX Locally**  
-
-Follow these steps to set up and run the *AutoMailX* project on your local system.  
-
-### 📥 **Step 1: Clone the Repository**  
-
-```bash
-git clone https://github.com/Shreyas2004wagh/AutoMailX_SM.git
-cd AutoMailX_SM
+```text
+AutoMailX_SM/
+  client/                 React/Vite frontend
+  server/                 Express API server
+    config/               MongoDB connection
+    controllers/          Route handlers
+    models/               Mongoose models
+    routes/               API route definitions
+    services/             Gmail and Gemini integrations
+  README.md
+  package.json            Root helper scripts
 ```
 
----
+## Prerequisites
 
-### ⚙ **Step 2: Install Dependencies**  
+- Node.js 20 or newer
+- npm
+- MongoDB database URI
+- Gemini API key
+- Google Cloud OAuth credentials if you want Gmail import and Google sign-in
 
-Navigate to the **backend directory** and install dependencies:  
+## Environment Variables
 
-```bash
-cd server
-npm install
+Create `server/.env`:
+
+```env
+PORT=5000
+DATABASE_URI=mongodb+srv://<user>:<password>@<cluster>/<database>
+JWT_SECRET=replace-with-a-long-random-secret
+SESSION_SECRET=replace-with-a-long-random-session-secret
+GEMINI_API_KEY=your-gemini-api-key
+GEMINI_MODEL=gemini-2.0-flash
+BASE_URL=http://localhost:5000
+FRONTEND_URL=http://localhost:5173
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+NODE_ENV=development
 ```
 
-Navigate to the **frontend directory** and install dependencies:  
+Create `client/.env`:
 
-```bash
-cd ../client
-npm install
+```env
+VITE_API_BASE_URL=http://localhost:5000
 ```
 
----
+`GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are optional for local email/password auth. If they are missing, the server still starts and the Google OAuth route returns a configuration error.
 
-### ▶ **Step 3: Run the Frontend and Backend Servers**  
+## Google OAuth Setup
 
-1️⃣ **Run the Backend Server:**  
+In Google Cloud Console:
+
+1. Create or select a Google Cloud project.
+2. Enable the Gmail API.
+3. Configure the OAuth consent screen.
+4. Create OAuth 2.0 Client ID credentials for a web application.
+5. Add this authorized redirect URI for local development:
+
+```text
+http://localhost:5000/auth/google/callback
+```
+
+For deployment, set `BASE_URL` to the deployed backend URL and add:
+
+```text
+<BACKEND_URL>/auth/google/callback
+```
+
+## Local Setup
+
+Install dependencies for both apps:
 
 ```bash
-cd ../server
+npm run install:all
+```
+
+Start the backend in one terminal:
+
+```bash
+npm run dev:server
+```
+
+Start the frontend in another terminal:
+
+```bash
+npm run dev:client
+```
+
+Open the app:
+
+```text
+http://localhost:5173
+```
+
+The API runs on:
+
+```text
+http://localhost:5000
+```
+
+## Useful Scripts
+
+From the project root:
+
+```bash
+npm run install:all
+npm run dev:server
+npm run dev:client
+npm run build:client
+npm run lint:client
+```
+
+From `server/`:
+
+```bash
+npm run dev
 npm start
 ```
 
-2️⃣ **Run the Frontend Server:**  
+From `client/`:
 
 ```bash
-cd ../client
-npm start
+npm run dev
+npm run build
+npm run lint
+npm run preview
 ```
 
----
+## API Overview
 
-### 🌐 **Step 4: Access the Application**  
+| Method | Route | Description |
+| --- | --- | --- |
+| `POST` | `/signup` | Create an email/password account |
+| `POST` | `/login` | Log in and receive a JWT |
+| `GET` | `/auth/google` | Start Google OAuth |
+| `GET` | `/auth/google/callback` | Google OAuth callback |
+| `GET` | `/emails` | Fetch recent Gmail messages into MongoDB |
+| `GET` | `/get-emails` | Read stored emails and classify them |
+| `POST` | `/summarize` | Generate an AI summary for email content |
+| `POST` | `/generate-response` | Generate an AI response draft |
+| `POST` | `/save-response` | Save an AI response draft to the email document |
+| `GET` | `/logout` | Destroy the current session |
 
-- **Frontend:** Open your browser and go to:  
-  🔗 [http://localhost:5173](http://localhost:5173)  
+## Development Notes
 
-- **Backend API:** Accessible at:  
-  🔗 [http://localhost:5000](http://localhost:5000) (or the configured port)  
+- The frontend defaults to `http://localhost:5000` when `VITE_API_BASE_URL` is not set.
+- The backend requires `DATABASE_URI` and `JWT_SECRET` to start.
+- Gemini features require `GEMINI_API_KEY`.
+- Gmail import requires a Google OAuth session with the Gmail readonly scope.
+- Stored emails are classified lazily when `/get-emails` is called.
 
----
+## Troubleshooting
 
-### 🐞 **Troubleshooting**  
+**Client requests go to `undefined/...`**
 
-- Ensure all dependencies are correctly installed.  
-- Check if the ports are not in conflict with other running services.  
-- Review terminal logs for any errors.  
+Set `client/.env` with `VITE_API_BASE_URL=http://localhost:5000`, or use the current fallback behavior by rebuilding with the latest code.
 
-You're all set to use **AutoMailX** locally! 🚀  
+**Google login says it is not configured**
 
----
+Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `BASE_URL` in `server/.env`, then restart the server.
 
-## 🌍 **Live Application**  
-- **Frontend:** [AutoMailX Frontend](https://automailx.vercel.app/)  
-- **Backend:** [AutoMailX Backend](https://automailx-sm.onrender.com/)
+**Gemini summary or response generation fails**
 
----
+Check that `GEMINI_API_KEY` is valid and that the selected `GEMINI_MODEL` supports text generation.
 
+**MongoDB connection fails**
 
-## 📊 **Presentation**  
-📜 [AutoMailX PPT](https://www.canva.com/design/DAGd1j2EOzM/tZTvvkK-hNV-gnq49clbrw/edit?utm_content=DAGd1j2EOzM&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton)  
+Verify `DATABASE_URI`, database user permissions, and network access for your MongoDB cluster.
 
----
+**Frontend build fails after dependency changes**
 
-This README now has **properly formatted code blocks** so commands can be copied easily. 🚀  
-Let me know if you need any modifications! 😊
+Refresh dependencies:
+
+```bash
+npm install --prefix client
+```
+
+Then run:
+
+```bash
+npm run build:client
+```
