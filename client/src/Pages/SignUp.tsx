@@ -65,14 +65,16 @@ const SignUp = () => {
       console.log("Signup successful:", data);
       navigate('/login'); 
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Signup Error:", err);
-      if (err.message.includes('already exists')) {
+      const message = err instanceof Error ? err.message : 'An unknown error occurred.';
+
+      if (message.includes('already exists')) {
         setError('An account with this email or username already exists.');
-      } else if (err.message.includes('failed (Status: 5')) {
+      } else if (message.includes('failed (Status: 5')) {
         setError('Something went wrong on our end. Please try again later.');
       } else {
-        setError(err.message || 'An unknown error occurred.');
+        setError(message);
       }
     } finally {
       setLoading(false);

@@ -6,17 +6,23 @@ const passport = require("passport");
 const jwt = require("jsonwebtoken");
 const connectDB = require("./config/db");
 const emailRoutes = require("./routes/emailRoutes");
-const authRoutes = require("./routes"); // Existing auth routes (login/signup)
-
-require("./auth"); // Import Google OAuth strategy
+const authRoutes = require("./routes");
+const { hasGoogleOAuthConfig } = require("./auth");
 
 const app = express();
 const port = process.env.PORT || 5000;
+const sessionSecret = process.env.SESSION_SECRET || process.env.JWT_SECRET;
 
-// Connect to MongoDB
+if (!process.env.JWT_SECRET) {
+  throw new Error("JWT_SECRET must be configured");
+}
+
+if (!sessionSecret) {
+  throw new Error("SESSION_SECRET or JWT_SECRET must be configured");
+}
+
 connectDB();
 
-// Trust proxy for Render (important for HTTPS detection)
 app.set("trust proxy", 1);
 
 app.use(
@@ -35,22 +41,16 @@ app.use(
 
 app.use(express.json());
 
-app.use((req, res, next) => {
-  if (process.env.NODE_ENV !== "production") {
-    // console.log("Session data:", req.session);
-  }
-  next();
-});
-
 app.use(
   session({
-    secret: process.env.JWT_SECRET,
+    secret: sessionSecret,
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // Secure in production
+      secure: process.env.NODE_ENV === "production",
       maxAge: 24 * 60 * 60 * 1000,
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     },
   })
 );
@@ -59,17 +59,20 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 app.get("/", (req, res) => {
-  try {
-    res.json({ message: "Server is running successfully 🚀" });
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Internal Server Error");
-  }
+  res.json({ message: "Server is running successfully" });
 });
 
-// Google OAuth Routes
 app.get(
   "/auth/google",
+  (req, res, next) => {
+    if (!hasGoogleOAuthConfig) {
+      return res.status(503).json({
+        message: "Google OAuth is not configured on this server",
+      });
+    }
+
+    return next();
+  },
   passport.authenticate("google", {
     scope: ["email", "profile", "https://www.googleapis.com/auth/gmail.readonly"],
   })
@@ -79,7 +82,7 @@ app.get(
   "/auth/google/callback",
   passport.authenticate("google", { failureRedirect: "/" }),
   (req, res) => {
-    console.log("✅ User Authenticated via Google");
+    console.log("User authenticated via Google");
 
     req.session.user = {
       id: req.user.profile.id,
@@ -89,14 +92,12 @@ app.get(
       name: req.user.profile.displayName,
     };
 
-    // Generate JWT token for frontend
     const token = jwt.sign(
       { id: req.user.profile.id, email: req.user.profile.emails[0].value },
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
 
-    // Redirect to frontend with token
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
     res.redirect(`${frontendUrl}/content?token=${token}`);
   }
@@ -112,8 +113,7 @@ app.get("/logout", (req, res) => {
   });
 });
 
-// Use Routes
-app.use(authRoutes); // Login/Signup
-app.use(emailRoutes); // Email related routes
+app.use(authRoutes);
+app.use(emailRoutes);
 
-app.listen(port, () => console.log(`🚀 Server running on PORT: ${port}`));
+app.listen(port, () => console.log(`Server running on PORT: ${port}`));

@@ -74,7 +74,7 @@ function Content() {
         try {
           const errorData = await response.json();
           errorMessage = errorData.message || `HTTP ${response.status}`;
-        } catch (e) {
+        } catch {
           errorMessage = `HTTP ${response.status}: ${response.statusText}`;
         }
         console.error("Summary API error:", errorMessage);
@@ -117,8 +117,7 @@ function Content() {
       })
       .catch((err) => console.error("Error fetching stored emails:", err));
 
-    setSummary(null);
-  }, [activeFilter]);
+  }, []);
 
   const handleGenerateResponse = async () => {
     if (!selectedEmail) return;
@@ -509,7 +508,7 @@ function Content() {
               <button
                 onClick={handleSaveResponse}
                 className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center mt-4"
-                disabled={responseSaving}
+                disabled={responseSaving || !response}
               >
                 {responseSaving ? (
                   <>

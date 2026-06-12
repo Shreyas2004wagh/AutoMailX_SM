@@ -154,9 +154,44 @@ const generateEmailResponse = async (req, res) => {
     }
 };
 
+// POST /save-response - Save an edited/generated response for an email
+const saveGeneratedResponse = async (req, res) => {
+    try {
+        const { emailId, response } = req.body;
+
+        if (!emailId || !response || typeof response !== "string") {
+            return res.status(400).json({
+                message: "Email ID and response are required",
+            });
+        }
+
+        const updatedEmail = await Email.findOneAndUpdate(
+            { emailId },
+            { $set: { aiResponse: response.trim() } },
+            { new: true }
+        );
+
+        if (!updatedEmail) {
+            return res.status(404).json({ message: "Email not found" });
+        }
+
+        return res.json({
+            message: "Response saved successfully",
+            email: updatedEmail,
+        });
+    } catch (error) {
+        console.error("Error saving generated response:", error);
+        return res.status(500).json({
+            message: "Failed to save response",
+            error: error.message,
+        });
+    }
+};
+
 module.exports = {
     getEmails,
     getEmailsFromDB,
     summarizeEmail,
     generateEmailResponse,
+    saveGeneratedResponse,
 };
