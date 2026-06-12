@@ -18,10 +18,9 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "express-session": "^1.18.1",
-    "googleapis": "^144.0.0",
+    "googleapis": "^173.0.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.13.2",
-    "node-cron": "^3.0.3",
     "nodemon": "^3.1.9",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0"
